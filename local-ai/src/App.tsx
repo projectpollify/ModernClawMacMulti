@@ -15,6 +15,7 @@ import { useMemoryStore } from '@/stores/memoryStore';
 import { useModelStore } from '@/stores/modelStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useSuggestionStore } from '@/stores/suggestionStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useViewStore } from '@/stores/uiStore';
 
@@ -26,6 +27,7 @@ function App() {
   const hasLoadedAgents = useAgentStore((state) => state.hasLoaded);
   const loadConversations = useConversationStore((state) => state.loadConversations);
   const restoreLatestConversation = useConversationStore((state) => state.restoreLatestConversation);
+  const clearConversations = useConversationStore((state) => state.clearConversations);
   const initializeMemory = useMemoryStore((state) => state.initialize);
   const currentModel = useModelStore((state) => state.currentModel);
   const availableModels = useModelStore((state) => state.models);
@@ -34,6 +36,7 @@ function App() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const settings = useSettingsStore((state) => state.settings);
   const hasLoadedSettings = useSettingsStore((state) => state.hasLoaded);
+  const setActiveBrain = useSuggestionStore((state) => state.setActiveBrain);
   const setTheme = useThemeStore((state) => state.setTheme);
   const hasCompletedOnboarding = useOnboardingStore((state) => state.hasCompletedOnboarding);
 
@@ -59,6 +62,8 @@ function App() {
     }
 
     const initializeWorkspace = async () => {
+      setActiveBrain(activeAgentId);
+      clearConversations();
       await initializeMemory();
 
       if (settings.saveConversationHistory) {
@@ -70,11 +75,13 @@ function App() {
     void initializeWorkspace();
   }, [
     activeAgentId,
+    clearConversations,
     hasLoadedAgents,
     hasLoadedSettings,
     initializeMemory,
     loadConversations,
     restoreLatestConversation,
+    setActiveBrain,
     settings.saveConversationHistory,
   ]);
 

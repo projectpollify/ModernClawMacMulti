@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAgentStore } from '@/stores/agentStore';
 import { useConversationStore } from '@/stores/conversationStore';
 import { useViewStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 import type { Conversation } from '@/types';
 
 export function ConversationList() {
+  const activeAgent = useAgentStore((state) => state.activeAgent);
   const conversations = useConversationStore((state) => state.conversations);
   const currentId = useConversationStore((state) => state.currentId);
   const selectConversation = useConversationStore((state) => state.selectConversation);
@@ -19,12 +21,17 @@ export function ConversationList() {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
+  useEffect(() => {
+    setEditingId(null);
+    setDraftTitle('');
+  }, [activeAgent?.agentId]);
+
   if (recentConversations.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border/80 bg-background/70 px-3 py-4 text-sm text-muted-foreground">
-        <p>No conversations yet.</p>
+        <p>No conversations yet for {activeAgent?.name ?? 'this brain'}.</p>
         <p className="mt-2 text-xs leading-6 text-muted-foreground">
-          Start a new chat to begin building conversation history for this workspace.
+          Start a new chat to give this brain its own conversation history.
         </p>
       </div>
     );

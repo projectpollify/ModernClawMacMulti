@@ -4,7 +4,7 @@ export type Theme = 'light' | 'dark' | 'system';
 export interface Agent {
   agentId: string;
   name: string;
-  profileKind?: 'main' | 'support';
+  profileKind?: 'main' | 'support' | 'custom';
   sharesPrimaryWorkspace?: boolean;
   description?: string;
   status?: string;

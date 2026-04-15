@@ -4,11 +4,13 @@ import { CuratorInbox } from '@/components/brain/CuratorInbox';
 import { QuestionQueueCard } from '@/components/brain/QuestionQueueCard';
 import { SuggestionCard } from '@/components/brain/SuggestionCard';
 import { formatCharacterRange, formatSoftLimit, getContentGuidance, getLengthState } from '@/lib/contentGuidance';
+import { useAgentStore } from '@/stores/agentStore';
 import { useMemoryStore } from '@/stores/memoryStore';
 import { useSuggestionStore } from '@/stores/suggestionStore';
 import type { BrainActivityAction, BrainActivityEntry, BrainSuggestion, CuratorPackage, KnowledgeIntakeRecord } from '@/types';
 
 export function BrainView() {
+  const activeAgent = useAgentStore((state) => state.activeAgent);
   const initializeMemory = useMemoryStore((state) => state.initialize);
   const suggestions = useSuggestionStore((state) => state.suggestions);
   const draftAnswers = useSuggestionStore((state) => state.draftAnswers);
@@ -66,6 +68,27 @@ export function BrainView() {
   useEffect(() => {
     void initializeMemory();
   }, [initializeMemory]);
+
+  useEffect(() => {
+    setApplyingId(null);
+    setFeedbackById({});
+    setError(null);
+    setKnowledgeTitle('');
+    setKnowledgeSummary('');
+    setKnowledgeTags('');
+    setKnowledgeContent('');
+    setKnowledgeSource('');
+    setIsSavingKnowledge(false);
+    setKnowledgeFeedback(null);
+    setSetupRole('');
+    setSetupSupport('');
+    setSetupTone('');
+    setSetupPriorities('');
+    setIsApplyingSetup(false);
+    setSetupFeedback(null);
+    setCuratorActionId(null);
+    setCuratorFeedbackById({});
+  }, [activeAgent?.agentId]);
 
   const setupStatusItems = [
     {
@@ -343,6 +366,12 @@ export function BrainView() {
                 This is the first differentiated layer for ModernClaw. Instead of silently mutating memory,
                 the app proposes profile, memory, knowledge, and behavior improvements for review.
               </p>
+              {activeAgent ? (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1 text-xs text-secondary-foreground">
+                  <span className="font-semibold uppercase tracking-[0.16em]">Active Brain</span>
+                  <span>{activeAgent.name}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-2">
@@ -950,6 +979,5 @@ function formatTimestamp(value: string) {
     minute: '2-digit',
   });
 }
-
 
 

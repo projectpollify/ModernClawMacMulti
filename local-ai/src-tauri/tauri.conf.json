@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:11434 http://127.0.0.1:11434 http://localhost:1234 http://127.0.0.1:1234"
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:11434 http://127.0.0.1:11434 http://localhost:8080 http://127.0.0.1:8080"
     }
   },
   "bundle": {
@@ -48,7 +48,7 @@
     ],
     "publisher": "ModernClaw",
     "shortDescription": "Local-first AI workspace for durable personal context and chat on Mac.",
-    "longDescription": "ModernClawMac is a local-first desktop workspace for private AI chat, durable Markdown memory, guided setup, and on-device context management through LM Studio.",
+    "longDescription": "ModernClawMac is a local-first desktop workspace for private AI chat, durable Markdown memory, guided setup, and on-device context management through a built-in direct engine.",
     "category": "Productivity",
     "copyright": "(c) 2026 ModernClawMac",
     "macOS": {

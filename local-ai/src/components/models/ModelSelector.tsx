@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
+import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
 import { useModelStore } from '@/stores/modelStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export function ModelSelector() {
   const models = useModelStore((state) => state.models);
@@ -11,6 +13,7 @@ export function ModelSelector() {
   const checkStatus = useModelStore((state) => state.checkStatus);
   const setCurrentModel = useModelStore((state) => state.setCurrentModel);
   const updateActiveAgentDefaultModel = useAgentStore((state) => state.updateActiveAgentDefaultModel);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -30,11 +33,17 @@ export function ModelSelector() {
   }, []);
 
   const handleSelectModel = async (modelName: string) => {
-    setCurrentModel(modelName);
     setIsOpen(false);
 
     try {
+      if (IS_MAC_MODEL_PROVIDER) {
+        await setupApi.switchDirectEngineModel(modelName);
+      }
+
+      setCurrentModel(modelName);
       await updateActiveAgentDefaultModel(modelName);
+      await loadSettings();
+      await checkStatus();
     } catch {
       void checkStatus();
     }

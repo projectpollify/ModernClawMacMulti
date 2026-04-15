@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { formatCharacterRange, formatSoftLimit, getContentGuidance, getLengthState } from '@/lib/contentGuidance';
+import { useAgentStore } from '@/stores/agentStore';
 import { useMemoryStore } from '@/stores/memoryStore';
 
 interface DailyLogComposerProps {
@@ -9,12 +10,14 @@ interface DailyLogComposerProps {
 }
 
 export function DailyLogComposer({ onClose, onSaved }: DailyLogComposerProps) {
+  const activeAgent = useAgentStore((state) => state.activeAgent);
   const appendDailyLog = useMemoryStore((state) => state.appendDailyLog);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const today = useMemo(() => getLocalDateString(), []);
   const guidance = getContentGuidance('daily-log');
+  const brainName = activeAgent?.name ?? 'this brain';
 
   const trimmedContent = content.trim();
   const hasContent = trimmedContent.length > 0;
@@ -25,7 +28,7 @@ export function DailyLogComposer({ onClose, onSaved }: DailyLogComposerProps) {
     setContent('');
     setError(null);
     setIsSaving(false);
-  }, []);
+  }, [activeAgent?.agentId]);
 
   const handleSave = async () => {
     if (!hasContent) {
@@ -68,7 +71,7 @@ export function DailyLogComposer({ onClose, onSaved }: DailyLogComposerProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [hasContent, trimmedContent]);
+  }, [hasContent, trimmedContent, activeAgent?.agentId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
@@ -78,7 +81,7 @@ export function DailyLogComposer({ onClose, onSaved }: DailyLogComposerProps) {
             <h2 className="text-lg font-semibold tracking-tight">New Daily Log Entry</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               This adds an entry to <code className="rounded bg-secondary px-1.5 py-0.5">memory/{today}.md</code>{' '}
-              and makes it available as today&apos;s context in chat.
+              for {brainName} and makes it available as today&apos;s context in chat.
             </p>
             <p className="mt-2 text-xs leading-6 text-muted-foreground">
               Recommended length: {formatCharacterRange(guidance)}. Soft limit: {formatSoftLimit(guidance)}.

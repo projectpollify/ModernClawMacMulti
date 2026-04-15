@@ -42,10 +42,10 @@ export function OllamaStep({ onNext, onBack }: OllamaStepProps) {
   return (
     <StepShell
       eyebrow="Step 1"
-      title={IS_MAC_MODEL_PROVIDER ? 'Check LM Studio' : 'Check Ollama'}
+      title={IS_MAC_MODEL_PROVIDER ? 'Check Direct Engine' : 'Check Ollama'}
       description={
         IS_MAC_MODEL_PROVIDER
-          ? 'ModernClawMac talks to LM Studio on your machine to run the model layer.'
+          ? 'ModernClawMac talks to a local llama.cpp engine on your machine to run the model layer.'
           : 'ModernClaw talks to Ollama on your machine to run the model layer.'
       }
       backLabel="Back"
@@ -57,7 +57,7 @@ export function OllamaStep({ onNext, onBack }: OllamaStepProps) {
       {isChecking ? (
         <StatusCard
           tone="neutral"
-          title={IS_MAC_MODEL_PROVIDER ? 'Checking for LM Studio...' : 'Checking for Ollama...'}
+          title={IS_MAC_MODEL_PROVIDER ? 'Checking for Direct Engine...' : 'Checking for Ollama...'}
           description={`Looking for a running ${MODEL_PROVIDER_NAME} instance at ${MODEL_PROVIDER_STATUS_URL}.`}
         />
       ) : isRunning ? (
@@ -67,20 +67,20 @@ export function OllamaStep({ onNext, onBack }: OllamaStepProps) {
           description={
             ollamaStatus?.version
               ? `Version detected: ${ollamaStatus.version}. The next step is ${
-                  IS_MAC_MODEL_PROVIDER ? 'loading a Gemma 4 model in LM Studio.' : 'installing the recommended model.'
+                  IS_MAC_MODEL_PROVIDER ? 'confirming a Gemma 4 model in the direct engine.' : 'installing the recommended model.'
                 }`
               : IS_MAC_MODEL_PROVIDER
-                ? 'You are ready to load the recommended model in LM Studio next.'
+                ? 'You are ready to confirm the recommended model in the direct engine next.'
                 : 'You are ready to install the recommended model next.'
           }
         />
       ) : (
         <StatusCard
           tone="warning"
-          title={IS_MAC_MODEL_PROVIDER ? 'LM Studio not detected' : 'Ollama not detected'}
+          title={IS_MAC_MODEL_PROVIDER ? 'Direct Engine not detected' : 'Ollama not detected'}
           description={
             IS_MAC_MODEL_PROVIDER
-              ? 'Open LM Studio, start its local server on port 1234, load a Gemma 4 model, then check again.'
+              ? 'Start the local llama.cpp engine on port 8080 with a Gemma 4 model, then check again.'
               : 'Install and start Ollama, then check again. ModernClaw depends on it for model execution.'
           }
         >
@@ -88,9 +88,9 @@ export function OllamaStep({ onNext, onBack }: OllamaStepProps) {
             <ol className="list-decimal space-y-1 pl-5">
               {IS_MAC_MODEL_PROVIDER ? (
                 <>
-                  <li>Open LM Studio on this machine.</li>
-                  <li>Start the local server on port 1234 from LM Studio.</li>
-                  <li>Load a Gemma 4 model there, then come back and click Check Again.</li>
+                  <li>Make sure `llama-server` is installed on this machine.</li>
+                  <li>Start the local engine on port 8080.</li>
+                  <li>Load a Gemma 4 GGUF model there, then come back and click Check Again.</li>
                 </>
               ) : (
                 <>
@@ -116,7 +116,7 @@ export function OllamaStep({ onNext, onBack }: OllamaStepProps) {
           <div className="mt-6">
             <div className="flex flex-wrap justify-center gap-3">
               <Button variant="outline" onClick={() => void openProviderApp()} disabled={isOpeningDownload}>
-                {isOpeningDownload ? 'Opening...' : IS_MAC_MODEL_PROVIDER ? 'Open LM Studio' : 'Download Ollama'}
+                {isOpeningDownload ? 'Opening...' : IS_MAC_MODEL_PROVIDER ? 'Open Engine Guide' : 'Download Ollama'}
               </Button>
               {!IS_MAC_MODEL_PROVIDER ? (
                 <Button variant="outline" onClick={() => void startOllama()} disabled={isStartingOllama}>
@@ -228,4 +228,3 @@ function StatusCard({
     </div>
   );
 }
-

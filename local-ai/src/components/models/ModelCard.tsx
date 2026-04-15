@@ -1,9 +1,11 @@
 ﻿import { useState } from 'react';
 import { IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
+import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import type { Model } from '@/services/ollama';
 import { useAgentStore } from '@/stores/agentStore';
 import { useModelStore } from '@/stores/modelStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { ModelInfo } from './ModelInfo';
 
 interface ModelCardProps {
@@ -14,13 +16,21 @@ export function ModelCard({ model }: ModelCardProps) {
   const currentModel = useModelStore((state) => state.currentModel);
   const setCurrentModel = useModelStore((state) => state.setCurrentModel);
   const deleteModel = useModelStore((state) => state.deleteModel);
+  const checkStatus = useModelStore((state) => state.checkStatus);
   const updateActiveAgentDefaultModel = useAgentStore((state) => state.updateActiveAgentDefaultModel);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
   const [showInfo, setShowInfo] = useState(false);
   const isActive = model.name === currentModel;
 
   const handleSelect = async () => {
+    if (IS_MAC_MODEL_PROVIDER) {
+      await setupApi.switchDirectEngineModel(model.name);
+    }
+
     setCurrentModel(model.name);
     await updateActiveAgentDefaultModel(model.name);
+    await loadSettings();
+    await checkStatus();
   };
 
   return (
@@ -79,7 +89,7 @@ export function ModelCard({ model }: ModelCardProps) {
 
 function formatSize(bytes: number): string {
   if (!bytes || bytes <= 0) {
-    return 'Loaded in LM Studio';
+    return IS_MAC_MODEL_PROVIDER ? 'Local GGUF' : 'Loaded by Provider';
   }
 
   const gb = bytes / (1024 * 1024 * 1024);

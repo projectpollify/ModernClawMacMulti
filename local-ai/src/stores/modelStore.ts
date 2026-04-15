@@ -133,7 +133,7 @@ export const useModelStore = create<ModelState>()(
             set({
               error:
                 `ModernClaw could not confirm that ${trimmedName} is available yet. ` +
-                'If you are using ModernClawMac, load the model in LM Studio and refresh again.',
+                'If you are using ModernClawMac, make sure the direct engine can see that GGUF model and refresh again.',
             });
             return;
           }

@@ -404,7 +404,7 @@ function normalizeChatError(error: unknown): string {
       `${MODEL_PROVIDER_NAME} is responding, but its model runner crashed while loading the model. ` +
       `This points to a ${MODEL_PROVIDER_NAME} runtime problem on this machine rather than ModernClaw request wiring. ` +
       (IS_MAC_MODEL_PROVIDER
-        ? 'Check the LM Studio logs or app console, then retry after reloading the model there.'
+        ? 'Check the llama.cpp console output, then retry after the engine finishes reloading the model.'
         : 'Check ~/.ollama/logs/server.log, then update or reinstall Ollama before retrying.')
     );
   }
@@ -417,7 +417,7 @@ function normalizeChatError(error: unknown): string {
     return (
       `ModernClaw could not reach ${MODEL_PROVIDER_NAME} on ${MODEL_PROVIDER_STATUS_URL}. ` +
       (IS_MAC_MODEL_PROVIDER
-        ? 'Start the LM Studio local server on port 1234, load a model there, and refresh the checks.'
+        ? 'Start the local llama.cpp engine on port 8080, make sure a model is loaded, and refresh the checks.'
         : 'Start Ollama first, or use the Setup screen to launch it and refresh the checks.')
     );
   }

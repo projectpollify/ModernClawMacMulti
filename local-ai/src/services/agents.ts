@@ -43,9 +43,34 @@ function fromAgentDto(dto: AgentDto): Agent {
 }
 
 export const agentApi = {
+  async listAgents(): Promise<Agent[]> {
+    const agents = await invoke<AgentDto[]>('agent_list');
+    return agents.map(fromAgentDto);
+  },
+
   async getActiveAgent(): Promise<Agent> {
     const agent = await invoke<AgentDto>('agent_get_active');
     return fromAgentDto(agent);
+  },
+
+  async setActiveAgent(agentId: string): Promise<void> {
+    return invoke('agent_set_active', { agentId });
+  },
+
+  async createAgent(agent: {
+    agentId: string;
+    name: string;
+    description?: string;
+    defaultModel?: string;
+  }): Promise<void> {
+    return invoke('agent_create', {
+      agent: {
+        agentId: agent.agentId,
+        name: agent.name,
+        description: agent.description,
+        defaultModel: agent.defaultModel,
+      },
+    });
   },
 
   async updateDefaultModel(agentId: string, defaultModel: string | null): Promise<void> {
@@ -54,5 +79,9 @@ export const agentApi = {
 
   async updateVoiceSettings(agentId: string, voiceSettings: AgentVoiceSettings): Promise<void> {
     return invoke('agent_update_voice_settings', { agentId, voiceSettings });
+  },
+
+  async deleteAgent(agentId: string): Promise<void> {
+    return invoke('agent_delete', { agentId });
   },
 };

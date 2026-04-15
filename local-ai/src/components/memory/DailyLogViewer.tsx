@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { memoryApi, type DailyLog } from '@/services/memory';
+import { useAgentStore } from '@/stores/agentStore';
 
 interface DailyLogViewerProps {
   date: string;
@@ -8,9 +9,11 @@ interface DailyLogViewerProps {
 }
 
 export function DailyLogViewer({ date, onClose }: DailyLogViewerProps) {
+  const activeAgent = useAgentStore((state) => state.activeAgent);
   const [log, setLog] = useState<DailyLog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const brainName = activeAgent?.name ?? 'this brain';
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +47,7 @@ export function DailyLogViewer({ date, onClose }: DailyLogViewerProps) {
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [date, activeAgent?.agentId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
@@ -53,7 +56,9 @@ export function DailyLogViewer({ date, onClose }: DailyLogViewerProps) {
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Daily Log</h2>
             <p className="mt-1 text-sm text-muted-foreground">{date}</p>
-            <p className="mt-2 text-xs leading-6 text-muted-foreground">Viewing the saved entry for this date.</p>
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+              Viewing {brainName}&apos;s entry for this date.
+            </p>
           </div>
           <Button variant="outline" onClick={onClose}>
             Close

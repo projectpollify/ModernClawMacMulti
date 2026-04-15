@@ -24,6 +24,10 @@ export const setupApi = {
   async startOllama(): Promise<void> {
     return invoke('setup_start_ollama');
   },
+
+  async switchDirectEngineModel(modelName: string): Promise<string> {
+    return invoke('setup_switch_direct_engine_model', { modelName });
+  },
 };
 
 export { OLLAMA_DOWNLOAD_URL };

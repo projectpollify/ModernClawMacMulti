@@ -37,7 +37,7 @@ export function CompleteStep({ onFinish }: { onFinish: () => void }) {
           <li>Edit SOUL.md to shape the assistant.</li>
           <li>Add household details to USER.md.</li>
           <li>Use Memory to keep durable notes and plans.</li>
-          <li>{IS_MAC_MODEL_PROVIDER ? 'Use Settings to pick among models loaded in LM Studio.' : 'Use Settings to manage models and prompt budget.'}</li>
+          <li>{IS_MAC_MODEL_PROVIDER ? 'Use Settings to switch between your local direct-engine model lanes.' : 'Use Settings to manage models and prompt budget.'}</li>
         </ul>
       </div>
 

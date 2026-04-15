@@ -1,7 +1,9 @@
 import { useSidebarStore, useViewStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
+import { BrainSelector } from '@/components/layout/BrainSelector';
 import { ModelSelector } from '@/components/models/ModelSelector';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useAgentStore } from '@/stores/agentStore';
 
 const titles = {
   chat: 'Chat',
@@ -15,6 +17,7 @@ export function Header() {
   const toggle = useSidebarStore((state) => state.toggle);
   const activeView = useViewStore((state) => state.activeView);
   const setView = useViewStore((state) => state.setView);
+  const activeAgent = useAgentStore((state) => state.activeAgent);
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur">
@@ -30,10 +33,14 @@ export function Header() {
         </Button>
         <div>
           <h1 className="text-base font-semibold">{titles[activeView]}</h1>
+          <p className="text-xs text-muted-foreground">
+            {activeAgent ? `${activeAgent.name} workspace` : 'Local-first workspace shell'}
+          </p>
         </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center gap-4 px-4">
+        <BrainSelector />
         <ModelSelector />
       </div>
 

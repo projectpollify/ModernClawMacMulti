@@ -166,18 +166,18 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
         <div className="mt-6 flex items-center justify-center gap-3">
           {IS_MAC_MODEL_PROVIDER ? (
             <Button variant="outline" onClick={() => void openProviderApp()} disabled={isOpeningDownload}>
-              {isOpeningDownload ? 'Opening LM Studio...' : 'Open LM Studio'}
+              {isOpeningDownload ? 'Opening Engine Guide...' : 'Open Engine Guide'}
             </Button>
           ) : null}
           <Button onClick={() => void handleDownload()} disabled={Boolean(downloadingModel) || isInstallingRecommendedModel}>
             {isInstallingRecommendedModel
               ? IS_MAC_MODEL_PROVIDER
-                ? 'Checking LM Studio...'
+                ? 'Checking Direct Engine...'
                 : 'Installing Recommended Model...'
               : downloadingModel
                 ? `Downloading ${downloadingModel}...`
                 : IS_MAC_MODEL_PROVIDER
-                  ? 'Confirm Gemma 4 In LM Studio'
+                  ? 'Confirm Gemma 4 In Engine'
                   : selectedModel === DEFAULT_FLOOR_MODEL
                     ? `Download ${DEFAULT_FLOOR_MODEL} (Recommended)`
                     : `Download ${selectedModel}`}

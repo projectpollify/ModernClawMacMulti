@@ -1,9 +1,14 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
+use reqwest::Client;
 use tauri::State;
+use tokio::time::sleep;
 
 use crate::DatabaseState;
+#[cfg(target_os = "macos")]
+use crate::services::llama_cpp::resolve_local_model_path;
 
 #[tauri::command]
 pub async fn setup_open_external(target: String) -> Result<(), String> {
@@ -76,44 +81,45 @@ pub async fn setup_start_ollama() -> Result<(), String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn setup_start_ollama(state: State<'_, DatabaseState>) -> Result<(), String> {
-    let configured_executable = read_string_setting(&state, "directEngineExecutablePath")?;
-    let executable = resolve_llama_server_path(configured_executable.as_deref())?;
-
     let model_path = read_string_setting(&state, "directEngineModelPath")?
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| {
             "No GGUF model path is configured yet. Add it in Settings under llama-server Executable / GGUF Model Path, then try Start Engine again.".to_string()
         })?;
+    start_llama_server(&state, &model_path)
+}
 
-    if !Path::new(&model_path).exists() {
-        return Err(format!(
-            "The configured GGUF model was not found at {}. Update the GGUF Model Path in Settings and try again.",
-            model_path
-        ));
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn setup_switch_direct_engine_model(
+    state: State<'_, DatabaseState>,
+    model_name: String,
+) -> Result<String, String> {
+    let trimmed_name = model_name.trim();
+    if trimmed_name.is_empty() {
+        return Err("No model name was provided.".to_string());
     }
 
-    let mut command = Command::new(&executable);
-    command.arg("-m").arg(&model_path);
+    let model_path = resolve_local_model_path(trimmed_name).ok_or_else(|| {
+        format!(
+            "Could not find a local GGUF file for {}. Make sure that model exists on disk first.",
+            trimmed_name
+        )
+    })?;
 
-    if let Some(mmproj_path) = infer_mmproj_path(&model_path) {
-        command.arg("--mmproj").arg(mmproj_path);
-    }
+    state
+        .db
+        .set_setting("directEngineModelPath", &serde_json::to_string(&model_path).map_err(|error| error.to_string())?)?;
+    state
+        .db
+        .set_setting("defaultModel", &serde_json::to_string(trimmed_name).map_err(|error| error.to_string())?)?;
 
-    if let Some(alias) = infer_model_alias(&model_path) {
-        command.arg("--alias").arg(alias);
-    }
+    stop_llama_server();
+    sleep(Duration::from_millis(500)).await;
+    start_llama_server(&state, &model_path)?;
+    wait_for_direct_engine().await?;
 
-    command
-        .arg("--host")
-        .arg("127.0.0.1")
-        .arg("--port")
-        .arg("8080")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|error| format!("Failed to start llama.cpp server: {}", error))?;
-
-    Ok(())
+    Ok(model_path)
 }
 
 #[cfg(target_os = "macos")]
@@ -158,6 +164,74 @@ fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String>
         "Could not find llama-server. Install llama.cpp first, or set the full llama-server path in Settings."
             .to_string(),
     )
+}
+
+#[cfg(target_os = "macos")]
+fn start_llama_server(state: &State<'_, DatabaseState>, model_path: &str) -> Result<(), String> {
+    let configured_executable = read_string_setting(state, "directEngineExecutablePath")?;
+    let executable = resolve_llama_server_path(configured_executable.as_deref())?;
+
+    if !Path::new(model_path).exists() {
+        return Err(format!(
+            "The configured GGUF model was not found at {}. Update the GGUF Model Path in Settings and try again.",
+            model_path
+        ));
+    }
+
+    let mut command = Command::new(&executable);
+    command.arg("-m").arg(model_path);
+
+    if let Some(mmproj_path) = infer_mmproj_path(model_path) {
+        command.arg("--mmproj").arg(mmproj_path);
+    }
+
+    if let Some(alias) = infer_model_alias(model_path) {
+        command.arg("--alias").arg(alias);
+    }
+
+    command
+        .arg("--host")
+        .arg("127.0.0.1")
+        .arg("--port")
+        .arg("8080")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| format!("Failed to start llama.cpp server: {}", error))?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn stop_llama_server() {
+    let _ = Command::new("pkill")
+        .arg("-f")
+        .arg("llama-server")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+#[cfg(target_os = "macos")]
+async fn wait_for_direct_engine() -> Result<(), String> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .map_err(|error| format!("Failed to create direct-engine status client: {}", error))?;
+
+    let url = "http://127.0.0.1:8080/v1/models";
+
+    for _ in 0..30 {
+        if let Ok(response) = client.get(url).send().await {
+            if response.status().is_success() {
+                return Ok(());
+            }
+        }
+
+        sleep(Duration::from_millis(500)).await;
+    }
+
+    Err("The direct engine did not come back online after switching models. Give it a moment and try again.".to_string())
 }
 
 #[cfg(target_os = "macos")]

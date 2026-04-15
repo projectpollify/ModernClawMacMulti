@@ -35,7 +35,7 @@ export const CURATED_FLOOR_MODELS = IS_MAC_MODEL_PROVIDER
         name: DEFAULT_FLOOR_MODEL,
         size: 'Primary lane',
         description:
-          'Primary Gemma 4 setup for ModernClawMac. Load this in LM Studio when you want the strongest local quality lane.',
+          'Primary Gemma 4 setup for ModernClawMac. Use this lane when you want the strongest local quality.',
         recommended: true,
       },
       {

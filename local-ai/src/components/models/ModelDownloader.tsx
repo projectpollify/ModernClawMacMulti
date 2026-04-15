@@ -19,8 +19,8 @@ export function ModelDownloader() {
     return (
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-          ModernClawMac reads whichever models are currently loaded in LM Studio. Start the LM Studio local server on
-          port 1234, then load one of the standard Gemma 4 lanes below and come back here to refresh.
+          ModernClawMac reads whichever Gemma 4 GGUF models are available to the local direct engine. Start
+          `llama-server` on port 8080, then make one of the standard lanes below available and come back here to refresh.
         </div>
 
         <div className="flex flex-wrap gap-2">

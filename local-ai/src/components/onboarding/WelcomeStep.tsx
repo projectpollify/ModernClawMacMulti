@@ -21,7 +21,7 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
           title="Works offline"
           description={
             IS_MAC_MODEL_PROVIDER
-              ? 'Once LM Studio has a model loaded, you can keep the chat loop local without the cloud.'
+              ? 'Once the direct engine has a model loaded, you can keep the chat loop local without the cloud.'
               : 'Once models are installed, you can chat without the cloud.'
           }
         />
@@ -30,7 +30,7 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
           title="Model control"
           description={
             IS_MAC_MODEL_PROVIDER
-              ? 'Load Gemma 4 in LM Studio, then let this workspace route around that local server.'
+              ? 'Run Gemma 4 through the local direct engine and let this workspace switch between supported lanes.'
               : 'Pick lightweight or capable models based on your hardware.'
           }
         />

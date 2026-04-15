@@ -620,14 +620,14 @@ export function SettingsView() {
               {!ollamaStatus?.running ? (
                 <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-700">
                   {IS_MAC_MODEL_PROVIDER
-                    ? `${MODEL_PROVIDER_NAME} is not serving on port 1234. Start its local server and load a model there to manage active models.`
+                    ? `${MODEL_PROVIDER_NAME} is not serving on port 8080. Start the local engine and load a model there to manage active models.`
                     : 'Ollama is not running. Start it to manage installed models.'}
                 </div>
               ) : null}
 
               <div className="mt-5 rounded-2xl border border-border bg-background/80 p-4">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {IS_MAC_MODEL_PROVIDER ? 'Load In LM Studio' : 'Download'}
+                  {IS_MAC_MODEL_PROVIDER ? 'Direct Engine Models' : 'Download'}
                 </h3>
                 <ModelDownloader />
               </div>
@@ -637,7 +637,7 @@ export function SettingsView() {
                   models.map((model) => <ModelCard key={model.name} model={model} />)
                 ) : (
                   <div className="rounded-2xl border border-dashed border-border bg-background/70 p-5 text-sm text-muted-foreground">
-                    {IS_MAC_MODEL_PROVIDER ? 'No models are currently loaded in LM Studio.' : 'No models installed yet.'}
+                    {IS_MAC_MODEL_PROVIDER ? 'No compatible local GGUF models are currently available.' : 'No models installed yet.'}
                   </div>
                 )}
               </div>

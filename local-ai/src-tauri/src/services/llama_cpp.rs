@@ -1,8 +1,10 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use crate::types::{ChatMessage, ChatResponse, Model, ModelDetails, OllamaStatus};
@@ -70,27 +72,43 @@ impl LlamaCppService {
             .await
             .map_err(|error| format!("Parse error: {}", error))?;
 
-        Ok(payload
-            .data
-            .into_iter()
-            .map(|model| {
-                let normalized_name = model.id.clone();
-                let lower = normalized_name.to_lowercase();
+        let mut merged = BTreeMap::new();
 
-                Model {
-                    name: normalized_name.clone(),
-                    modified_at: String::new(),
-                    size: 0,
-                    digest: normalized_name,
-                    details: ModelDetails {
-                        format: None,
-                        family: infer_family(&lower),
-                        parameter_size: None,
-                        quantization_level: None,
-                    },
-                }
-            })
-            .collect())
+        for model in discover_local_models() {
+            merged.insert(model.name.clone(), model);
+        }
+
+        for served in payload.data {
+            let id = served.id;
+            let lower = id.to_ascii_lowercase();
+
+            let model = merged.entry(id.clone()).or_insert_with(|| Model {
+                name: id.clone(),
+                modified_at: String::new(),
+                size: 0,
+                digest: id.clone(),
+                details: ModelDetails {
+                    format: Some("gguf".to_string()),
+                    family: infer_family(&lower),
+                    parameter_size: infer_parameter_size(&lower),
+                    quantization_level: None,
+                },
+            });
+
+            if model.modified_at.is_empty() {
+                model.modified_at = String::new();
+            }
+
+            if model.details.family.is_none() {
+                model.details.family = infer_family(&lower);
+            }
+
+            if model.details.parameter_size.is_none() {
+                model.details.parameter_size = infer_parameter_size(&lower);
+            }
+        }
+
+        Ok(merged.into_values().collect())
     }
 
     pub async fn chat_stream<F>(
@@ -326,5 +344,123 @@ fn infer_family(lower_name: &str) -> Option<String> {
         Some("mistral".to_string())
     } else {
         None
+    }
+}
+
+fn infer_parameter_size(lower_name: &str) -> Option<String> {
+    if lower_name.contains("gemma-4-e2b") {
+        Some("Gemma 4 E2B".to_string())
+    } else if lower_name.contains("gemma-4-e4b") {
+        Some("Gemma 4 E4B".to_string())
+    } else {
+        None
+    }
+}
+
+fn infer_quantization(file_name: &str) -> Option<String> {
+    let upper = file_name.to_ascii_uppercase();
+    ["Q8_0", "Q6_K", "Q5_K_M", "Q5_K_S", "Q4_K_M", "Q4_K_S", "Q4_0"].into_iter()
+        .find(|candidate| upper.contains(candidate))
+        .map(|value| value.to_string())
+}
+
+pub fn resolve_local_model_path(model_name: &str) -> Option<String> {
+    discover_local_models()
+        .into_iter()
+        .find(|model| model.name == model_name)
+        .map(|model| model.digest)
+}
+
+fn discover_local_models() -> Vec<Model> {
+    let mut models = Vec::new();
+
+    for root in local_model_roots() {
+        collect_local_models(&root, &mut models, 0);
+    }
+
+    models.sort_by(|left, right| left.name.cmp(&right.name));
+    models.dedup_by(|left, right| left.name == right.name);
+    models
+}
+
+fn local_model_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Some(home) = std::env::var_os("HOME") {
+        roots.push(PathBuf::from(&home).join(".lmstudio/models"));
+        roots.push(PathBuf::from(&home).join(".cache/lm-studio/models"));
+    }
+
+    roots
+}
+
+fn collect_local_models(root: &Path, models: &mut Vec<Model>, depth: usize) {
+    if depth > 8 || !root.exists() {
+        return;
+    }
+
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_local_models(&path, models, depth + 1);
+            continue;
+        }
+
+        if let Some(model) = model_from_path(&path) {
+            models.push(model);
+        }
+    }
+}
+
+fn model_from_path(path: &Path) -> Option<Model> {
+    let file_name = path.file_name()?.to_str()?;
+    let lower = file_name.to_ascii_lowercase();
+
+    if !lower.ends_with(".gguf") || lower.starts_with("mmproj-") {
+        return None;
+    }
+
+    if lower.contains("embed") || lower.contains("embedding") {
+        return None;
+    }
+
+    let model_name = canonical_model_name(path)?;
+    let metadata = fs::metadata(path).ok();
+    let modified_at = metadata
+        .as_ref()
+        .and_then(|meta| meta.modified().ok())
+        .map(DateTime::<Utc>::from)
+        .map(|value| value.to_rfc3339())
+        .unwrap_or_default();
+
+    Some(Model {
+        name: model_name.clone(),
+        modified_at,
+        size: metadata.as_ref().map(|meta| meta.len()).unwrap_or(0),
+        digest: path.to_string_lossy().to_string(),
+        details: ModelDetails {
+            format: Some("gguf".to_string()),
+            family: infer_family(&model_name.to_ascii_lowercase()),
+            parameter_size: infer_parameter_size(&lower),
+            quantization_level: infer_quantization(file_name),
+        },
+    })
+}
+
+fn canonical_model_name(path: &Path) -> Option<String> {
+    let file_name = path.file_name()?.to_str()?.to_ascii_lowercase();
+
+    if file_name.contains("gemma-4-e2b") {
+        Some("google/gemma-4-e2b".to_string())
+    } else if file_name.contains("gemma-4-e4b") {
+        Some("google/gemma-4-e4b".to_string())
+    } else {
+        path.file_stem()
+            .and_then(|value| value.to_str())
+            .map(|value| value.replace('_', "-"))
     }
 }

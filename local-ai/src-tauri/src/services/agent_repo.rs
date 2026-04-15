@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
+use std::path::Path;
 
 use crate::services::database::Database;
 use crate::types::Agent;
 
 pub const MAIN_WORKSPACE_ID: &str = "default";
-pub const MAIN_WORKSPACE_NAME: &str = "Main Workspace";
+pub const MAIN_WORKSPACE_NAME: &str = "Main Brain";
 pub const JOE_SUPPORT_ID: &str = "joe-support";
 pub const JOE_SUPPORT_NAME: &str = "Joe Support";
 const MAIN_WORKSPACE_DESCRIPTION: &str =
@@ -19,6 +20,7 @@ const MAIN_WORKSPACE_PIPER_VOICE_PRESET: &str = "amy-medium";
 const JOE_SUPPORT_PIPER_VOICE_PRESET: &str = "joe-medium";
 const LEGACY_DEFAULT_AGENT_NAME: &str = "Default Brain";
 const PREVIOUS_DEFAULT_AGENT_NAME: &str = "Gemma 4";
+const LEGACY_MAIN_WORKSPACE_NAME: &str = "Main Workspace";
 const PREVIOUS_MAIN_WORKSPACE_NAME: &str = "Rosie";
 const LEGACY_DEFAULT_AGENT_MODEL: &str = "nchapman/dolphin3.0-qwen2.5:3b";
 
@@ -31,6 +33,48 @@ impl<'a> AgentRepository<'a> {
         Self { db }
     }
 
+    pub fn create(&self, agent: &Agent) -> Result<(), String> {
+        self.db.execute(
+            r#"
+            INSERT INTO agents (
+                agent_id,
+                name,
+                description,
+                status,
+                workspace_path,
+                default_model,
+                enable_voice_output,
+                piper_voice_preset,
+                piper_model_path,
+                enable_voice_input,
+                whisper_model_path,
+                whisper_language,
+                created_at,
+                updated_at
+            )
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+            "#,
+            &[
+                &agent.agent_id,
+                &agent.name,
+                &agent.description,
+                &agent.status,
+                &agent.workspace_path,
+                &agent.default_model,
+                &agent.enable_voice_output,
+                &agent.piper_voice_preset,
+                &agent.piper_model_path,
+                &agent.enable_voice_input,
+                &agent.whisper_model_path,
+                &agent.whisper_language,
+                &agent.created_at.to_rfc3339(),
+                &agent.updated_at.to_rfc3339(),
+            ],
+        )?;
+
+        Ok(())
+    }
+
     pub fn list(&self) -> Result<Vec<Agent>, String> {
         self.db.query_all(
             r#"
@@ -39,12 +83,11 @@ impl<'a> AgentRepository<'a> {
                    enable_voice_input, whisper_model_path, whisper_language,
                    created_at, updated_at
             FROM agents
-            WHERE agent_id IN (?1, ?2)
             ORDER BY CASE agent_id
                 WHEN ?1 THEN 0
                 WHEN ?2 THEN 1
                 ELSE 2
-            END
+            END, updated_at DESC, name ASC
             "#,
             &[&MAIN_WORKSPACE_ID, &JOE_SUPPORT_ID],
             |row| {
@@ -122,6 +165,11 @@ impl<'a> AgentRepository<'a> {
             &[&next_model, &now, &agent_id],
         )?;
 
+        Ok(())
+    }
+
+    pub fn delete(&self, agent_id: &str) -> Result<(), String> {
+        self.db.execute("DELETE FROM agents WHERE agent_id = ?1", &[&agent_id])?;
         Ok(())
     }
 
@@ -204,28 +252,29 @@ impl<'a> AgentRepository<'a> {
             UPDATE agents
             SET workspace_path = ?1,
                 name = CASE
-                    WHEN name = ?2 OR name = ?3 OR name = ?4 THEN ?5
+                    WHEN name = ?2 OR name = ?3 OR name = ?4 OR name = ?5 THEN ?6
                     ELSE name
                 END,
                 description = CASE
-                    WHEN description IS NULL OR description = '' OR description = ?6 THEN ?7
+                    WHEN description IS NULL OR description = '' OR description = ?7 THEN ?8
                     ELSE description
                 END,
                 default_model = CASE
-                    WHEN default_model IS NULL OR default_model = '' OR default_model = ?8 THEN ?9
+                    WHEN default_model IS NULL OR default_model = '' OR default_model = ?9 THEN ?10
                     ELSE default_model
                 END,
                 piper_voice_preset = CASE
-                    WHEN piper_voice_preset IS NULL OR piper_voice_preset = '' THEN ?10
+                    WHEN piper_voice_preset IS NULL OR piper_voice_preset = '' THEN ?11
                     ELSE piper_voice_preset
                 END,
-                updated_at = ?11
-            WHERE agent_id = ?12
+                updated_at = ?12
+            WHERE agent_id = ?13
             "#,
             &[
                 &default_workspace_path,
                 &LEGACY_DEFAULT_AGENT_NAME,
                 &PREVIOUS_DEFAULT_AGENT_NAME,
+                &LEGACY_MAIN_WORKSPACE_NAME,
                 &PREVIOUS_MAIN_WORKSPACE_NAME,
                 &MAIN_WORKSPACE_NAME,
                 &legacy_description,
@@ -270,12 +319,14 @@ impl<'a> AgentRepository<'a> {
             ],
         )?;
 
-        let active_agent_id = self
-            .db
-            .get_setting("active_agent_id")?
-            .filter(|value| is_builtin_profile_id(value));
+        let active_agent_id = self.db.get_setting("active_agent_id")?;
 
-        if active_agent_id.is_none() {
+        let active_agent_missing = match active_agent_id {
+            Some(ref value) => self.get(value)?.is_none(),
+            None => true,
+        };
+
+        if active_agent_missing {
             self.db.set_setting("active_agent_id", MAIN_WORKSPACE_ID)?;
         }
 
@@ -283,10 +334,18 @@ impl<'a> AgentRepository<'a> {
     }
 
     pub fn get_active_agent_id(&self) -> Result<String, String> {
-        Ok(match self.db.get_setting("active_agent_id")? {
-            Some(value) if is_builtin_profile_id(&value) => value,
-            _ => MAIN_WORKSPACE_ID.to_string(),
-        })
+        Ok(self
+            .db
+            .get_setting("active_agent_id")?
+            .unwrap_or_else(|| MAIN_WORKSPACE_ID.to_string()))
+    }
+
+    pub fn set_active_agent(&self, agent_id: &str) -> Result<(), String> {
+        if self.get(agent_id)?.is_none() {
+            return Err(format!("Agent not found: {}", agent_id));
+        }
+
+        self.db.set_setting("active_agent_id", agent_id)
     }
 
     pub fn get_active_agent(&self, default_workspace_path: &str) -> Result<Agent, String> {
@@ -300,11 +359,19 @@ impl<'a> AgentRepository<'a> {
 
         self.db.set_setting("active_agent_id", MAIN_WORKSPACE_ID)?;
         self.get(MAIN_WORKSPACE_ID)?
-            .ok_or_else(|| "Main workspace profile could not be resolved".to_string())
+            .ok_or_else(|| "Main brain profile could not be resolved".to_string())
     }
 
     pub fn resolve_active_workspace_path(&self, default_workspace_path: &str) -> Result<String, String> {
         Ok(self.get_active_agent(default_workspace_path)?.workspace_path)
+    }
+
+    pub fn default_workspace_path_for_new_agent(default_workspace_root: &str, agent_id: &str) -> String {
+        Path::new(default_workspace_root)
+            .join("agents")
+            .join(agent_id)
+            .to_string_lossy()
+            .to_string()
     }
 
     fn insert_builtin_profile(
