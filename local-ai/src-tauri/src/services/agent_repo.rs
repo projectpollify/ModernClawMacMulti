@@ -227,12 +227,14 @@ impl<'a> AgentRepository<'a> {
     pub fn ensure_base_profiles(&self, default_workspace_path: &str) -> Result<(), String> {
         let now = Utc::now().to_rfc3339();
         let legacy_description = "Migrated baseline single-brain workspace";
+        let main_workspace_path = builtin_workspace_path(default_workspace_path, MAIN_WORKSPACE_ID);
+        let joe_workspace_path = builtin_workspace_path(default_workspace_path, JOE_SUPPORT_ID);
 
         self.insert_builtin_profile(
             MAIN_WORKSPACE_ID,
             MAIN_WORKSPACE_NAME,
             MAIN_WORKSPACE_DESCRIPTION,
-            default_workspace_path,
+            &main_workspace_path,
             DEFAULT_AGENT_MODEL,
             MAIN_WORKSPACE_PIPER_VOICE_PRESET,
             &now,
@@ -241,7 +243,7 @@ impl<'a> AgentRepository<'a> {
             JOE_SUPPORT_ID,
             JOE_SUPPORT_NAME,
             JOE_SUPPORT_DESCRIPTION,
-            default_workspace_path,
+            &joe_workspace_path,
             DEFAULT_AGENT_MODEL,
             JOE_SUPPORT_PIPER_VOICE_PRESET,
             &now,
@@ -271,7 +273,7 @@ impl<'a> AgentRepository<'a> {
             WHERE agent_id = ?13
             "#,
             &[
-                &default_workspace_path,
+                &main_workspace_path,
                 &LEGACY_DEFAULT_AGENT_NAME,
                 &PREVIOUS_DEFAULT_AGENT_NAME,
                 &LEGACY_MAIN_WORKSPACE_NAME,
@@ -308,7 +310,7 @@ impl<'a> AgentRepository<'a> {
             WHERE agent_id = ?8
             "#,
             &[
-                &default_workspace_path,
+                &joe_workspace_path,
                 &JOE_SUPPORT_NAME,
                 &JOE_SUPPORT_DESCRIPTION,
                 &LEGACY_DEFAULT_AGENT_MODEL,
@@ -428,6 +430,18 @@ impl<'a> AgentRepository<'a> {
         )?;
 
         Ok(())
+    }
+}
+
+fn builtin_workspace_path(default_workspace_root: &str, agent_id: &str) -> String {
+    if agent_id == MAIN_WORKSPACE_ID {
+        default_workspace_root.to_string()
+    } else {
+        Path::new(default_workspace_root)
+            .join("agents")
+            .join(agent_id)
+            .to_string_lossy()
+            .to_string()
     }
 }
 

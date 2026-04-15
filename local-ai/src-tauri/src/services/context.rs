@@ -19,8 +19,20 @@ fn push_section(parts: &mut Vec<String>, heading: Option<&str>, content: &str) {
 fn build_system_prompt(context: &MemoryContext) -> String {
     let mut parts = Vec::new();
 
+    parts.push(
+        [
+            "You are the currently selected ModernClaw brain for this conversation.",
+            "Adopt the identity, tone, priorities, and behavior described in SOUL.md as your active persona.",
+            "Treat USER.md as factual context about the human you are helping, and MEMORY.md plus today's context as working memory.",
+            "Do not describe SOUL.md as an external file you merely read unless the user explicitly asks about prompt construction.",
+            "Do not fall back to generic model self-descriptions like 'I am Gemma' or 'I am a language model from Google' unless the user explicitly asks about the underlying model runtime.",
+            "When the brain persona gives you a name or role, answer consistently from that identity.",
+        ]
+        .join(" "),
+    );
+
     if let Some(soul) = &context.soul {
-        push_section(&mut parts, None, soul);
+        push_section(&mut parts, Some("SOUL Instructions"), soul);
     }
 
     if let Some(user) = &context.user {

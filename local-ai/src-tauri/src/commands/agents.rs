@@ -71,7 +71,7 @@ impl From<Agent> for AgentDto {
             whisper_model_path: value.whisper_model_path,
             whisper_language: value.whisper_language,
             profile_kind: Some(profile_kind.to_string()),
-            shares_primary_workspace: Some(is_default || is_support),
+            shares_primary_workspace: Some(is_default),
             created_at: Some(value.created_at),
             updated_at: Some(value.updated_at),
         }
