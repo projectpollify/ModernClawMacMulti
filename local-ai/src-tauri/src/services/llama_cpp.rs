@@ -7,7 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use crate::types::{ChatMessage, ChatResponse, Model, ModelDetails, OllamaStatus};
+use crate::types::{ChatMessage, ChatResponse, EngineStatus, Model, ModelDetails};
 
 const LLAMA_CPP_BASE_URL: &str = "http://127.0.0.1:8080/v1";
 
@@ -29,7 +29,7 @@ impl LlamaCppService {
         }
     }
 
-    pub async fn check_status(&self) -> OllamaStatus {
+    pub async fn check_status(&self) -> EngineStatus {
         match self
             .client
             .get(format!("{}/models", self.base_url))
@@ -37,17 +37,17 @@ impl LlamaCppService {
             .send()
             .await
         {
-            Ok(response) if response.status().is_success() => OllamaStatus {
+            Ok(response) if response.status().is_success() => EngineStatus {
                 running: true,
                 version: Some("llama.cpp".to_string()),
                 error: None,
             },
-            Ok(response) => OllamaStatus {
+            Ok(response) => EngineStatus {
                 running: false,
                 version: Some("llama.cpp".to_string()),
                 error: Some(format!("Unexpected status: {}", response.status())),
             },
-            Err(error) => OllamaStatus {
+            Err(error) => EngineStatus {
                 running: false,
                 version: Some("llama.cpp".to_string()),
                 error: Some(error.to_string()),

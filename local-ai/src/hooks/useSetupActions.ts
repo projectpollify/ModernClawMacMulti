@@ -20,7 +20,7 @@ export function useSetupActions() {
   const memoryBasePath = useMemoryStore((state) => state.basePath);
 
   const [isOpeningDownload, setIsOpeningDownload] = useState(false);
-  const [isStartingOllama, setIsStartingOllama] = useState(false);
+  const [isStartingEngine, setIsStartingEngine] = useState(false);
   const [isInstallingRecommendedModel, setIsInstallingRecommendedModel] = useState(false);
   const [isInitializingWorkspace, setIsInitializingWorkspace] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function useSetupActions() {
         tone: 'info',
         message: IS_MAC_MODEL_PROVIDER
           ? 'Opened the direct-engine reference. For now, start a local llama.cpp server on port 8080, make sure a model is loaded there, then refresh setup.'
-          : 'Opened the Ollama download page. Install it there, then come back here and click Start Ollama.',
+          : 'Opened the engine download page. Install it there, then come back here and click Start Engine.',
       });
     } catch (error) {
       setActionError(String(error));
@@ -50,17 +50,17 @@ export function useSetupActions() {
     }
   };
 
-  const startOllama = async () => {
-    setIsStartingOllama(true);
+  const startEngine = async () => {
+    setIsStartingEngine(true);
     resetFeedback();
 
     try {
-      await setupApi.startOllama();
+      await setupApi.startEngine();
 
       if (IS_MAC_MODEL_PROVIDER) {
         setActionNotice({
           tone: 'info',
-          message: `Start ${MODEL_PROVIDER_NAME} by running a local llama.cpp server on port 8080, then make sure either ${DEFAULT_FLOOR_MODEL} or ${LIGHTWEIGHT_FLOOR_MODEL} is available there before refreshing setup.`,
+          message: `Starting ${MODEL_PROVIDER_NAME} with the saved llama.cpp executable and GGUF model path.`,
         });
       }
 
@@ -68,12 +68,12 @@ export function useSetupActions() {
         await delay(1200);
         await checkStatus();
 
-        if (useModelStore.getState().ollamaStatus?.running) {
+        if (useModelStore.getState().engineStatus?.running) {
           setActionNotice({
             tone: 'success',
             message: IS_MAC_MODEL_PROVIDER
               ? `${MODEL_PROVIDER_NAME} is responding. The next step is making sure either ${DEFAULT_FLOOR_MODEL} or ${LIGHTWEIGHT_FLOOR_MODEL} is available there.`
-              : 'Ollama is responding. The next step is installing the recommended model.',
+              : 'The engine is responding. The next step is installing the recommended model.',
           });
           return true;
         }
@@ -82,14 +82,14 @@ export function useSetupActions() {
       setActionError(
         IS_MAC_MODEL_PROVIDER
           ? `The direct engine is not responding yet. Start a local llama.cpp server on port 8080, then make sure either ${DEFAULT_FLOOR_MODEL} or ${LIGHTWEIGHT_FLOOR_MODEL} is available before refreshing setup.`
-          : 'Tried to start Ollama, but it is not responding yet. If this is a fresh install, open Ollama once and then refresh setup.'
+          : 'Tried to start the engine, but it is not responding yet. If this is a fresh install, open the engine once and then refresh setup.'
       );
       return false;
     } catch (error) {
       setActionError(String(error));
       return false;
     } finally {
-      setIsStartingOllama(false);
+      setIsStartingEngine(false);
     }
   };
 
@@ -129,7 +129,7 @@ export function useSetupActions() {
       if (!confirmed) {
         setActionError(
           `${DEFAULT_FLOOR_MODEL} has not been confirmed in the installed model list yet. ` +
-            'Give Ollama a little more time, then refresh and try again.'
+            'Give the engine a little more time, then refresh and try again.'
         );
         return false;
       }
@@ -178,11 +178,11 @@ export function useSetupActions() {
 
   return {
     openProviderApp,
-    startOllama,
+    startEngine,
     installRecommendedModel,
     initializeWorkspace,
     isOpeningDownload,
-    isStartingOllama,
+    isStartingEngine,
     isInstallingRecommendedModel,
     isInitializingWorkspace,
     isDownloadingAnyModel: Boolean(downloadingModel),

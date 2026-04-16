@@ -2,7 +2,7 @@ export const IS_MAC_MODEL_PROVIDER =
   typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgent);
 
 export const APP_DISPLAY_NAME = IS_MAC_MODEL_PROVIDER ? 'ModernClawMac' : 'ModernClaw';
-export const MODEL_PROVIDER_NAME = IS_MAC_MODEL_PROVIDER ? 'Direct Engine' : 'Ollama';
+export const MODEL_PROVIDER_NAME = 'Direct Engine';
 export const MODEL_PROVIDER_STATUS_URL = IS_MAC_MODEL_PROVIDER
   ? 'http://127.0.0.1:8080/v1/models'
   : 'http://localhost:11434/api/tags';

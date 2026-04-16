@@ -6,7 +6,7 @@ import { IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME, MODEL_PROVIDER_STATUS_URL }
 import { DEFAULT_FLOOR_MODEL } from '@/lib/voiceCatalog';
 import { contextApi, type ContextStats } from '@/services/context';
 import { historyApi } from '@/services/history';
-import { ollamaApi, type ChatMessage, type ChatResponse } from '@/services/ollama';
+import { engineApi, type ChatMessage, type ChatResponse } from '@/services/engine';
 import { useConversationStore } from '@/stores/conversationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import type { MessageContextStats, MessageMetrics } from '@/types';
@@ -215,7 +215,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         set({ streamingMetrics: responseMetrics });
       }
 
-      await ollamaApi.sendMessage(
+      await engineApi.sendMessage(
         currentModel,
         contextMessages,
         conversationId,
@@ -405,7 +405,7 @@ function normalizeChatError(error: unknown): string {
       `This points to a ${MODEL_PROVIDER_NAME} runtime problem on this machine rather than ModernClaw request wiring. ` +
       (IS_MAC_MODEL_PROVIDER
         ? 'Check the llama.cpp console output, then retry after the engine finishes reloading the model.'
-        : 'Check ~/.ollama/logs/server.log, then update or reinstall Ollama before retrying.')
+        : 'Check the engine server log, then update or reinstall the engine before retrying.')
     );
   }
 
@@ -418,7 +418,7 @@ function normalizeChatError(error: unknown): string {
       `ModernClaw could not reach ${MODEL_PROVIDER_NAME} on ${MODEL_PROVIDER_STATUS_URL}. ` +
       (IS_MAC_MODEL_PROVIDER
         ? 'Start the local llama.cpp engine on port 8080, make sure a model is loaded, and refresh the checks.'
-        : 'Start Ollama first, or use the Setup screen to launch it and refresh the checks.')
+        : 'Start the engine first, or use the Setup screen to launch it and refresh the checks.')
     );
   }
 

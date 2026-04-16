@@ -2,7 +2,7 @@
 import { IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
 import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
-import type { Model } from '@/services/ollama';
+import type { Model } from '@/services/engine';
 import { useAgentStore } from '@/stores/agentStore';
 import { useModelStore } from '@/stores/modelStore';
 import { useSettingsStore } from '@/stores/settingsStore';

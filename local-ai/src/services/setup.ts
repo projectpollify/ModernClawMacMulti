@@ -1,28 +1,28 @@
 import { invoke } from '@tauri-apps/api/core';
 import { IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_APP_PATH, MODEL_PROVIDER_DOWNLOAD_URL } from '@/lib/providerConfig';
 
-const OLLAMA_DOWNLOAD_URL = 'https://ollama.com/download';
+const ENGINE_DOWNLOAD_URL = 'https://github.com/ggml-org/llama.cpp';
 
 export const setupApi = {
   async openExternal(target: string): Promise<void> {
     return invoke('setup_open_external', { target });
   },
 
-  async openOllamaDownload(): Promise<void> {
+  async openEngineDownload(): Promise<void> {
     return invoke('setup_open_external', {
-      target: IS_MAC_MODEL_PROVIDER ? MODEL_PROVIDER_DOWNLOAD_URL : OLLAMA_DOWNLOAD_URL,
+      target: IS_MAC_MODEL_PROVIDER ? MODEL_PROVIDER_DOWNLOAD_URL : ENGINE_DOWNLOAD_URL,
     });
   },
 
   async openProviderApp(): Promise<void> {
-    const target = IS_MAC_MODEL_PROVIDER ? MODEL_PROVIDER_APP_PATH || MODEL_PROVIDER_DOWNLOAD_URL : OLLAMA_DOWNLOAD_URL;
+    const target = IS_MAC_MODEL_PROVIDER ? MODEL_PROVIDER_APP_PATH || MODEL_PROVIDER_DOWNLOAD_URL : ENGINE_DOWNLOAD_URL;
     return invoke('setup_open_external', {
       target,
     });
   },
 
-  async startOllama(): Promise<void> {
-    return invoke('setup_start_ollama');
+  async startEngine(): Promise<void> {
+    return invoke('setup_start_engine');
   },
 
   async switchDirectEngineModel(modelName: string): Promise<string> {
@@ -30,4 +30,4 @@ export const setupApi = {
   },
 };
 
-export { OLLAMA_DOWNLOAD_URL };
+export { ENGINE_DOWNLOAD_URL };

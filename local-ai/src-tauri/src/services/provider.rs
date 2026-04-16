@@ -1,10 +1,10 @@
-use crate::types::{ChatMessage, ChatResponse, Model, OllamaStatus};
+use crate::types::{ChatMessage, ChatResponse, EngineStatus, Model};
 
+use super::engine_legacy::EngineLegacyService;
 use super::llama_cpp::LlamaCppService;
-use super::ollama::OllamaService;
 
 pub enum ProviderService {
-    Ollama(OllamaService),
+    EngineLegacy(EngineLegacyService),
     LlamaCpp(LlamaCppService),
 }
 
@@ -13,19 +13,20 @@ impl ProviderService {
         if cfg!(target_os = "macos") {
             Self::LlamaCpp(LlamaCppService::new())
         } else {
-            Self::Ollama(OllamaService::new())
+            Self::EngineLegacy(EngineLegacyService::new())
         }
     }
-    pub async fn check_status(&self) -> OllamaStatus {
+
+    pub async fn check_status(&self) -> EngineStatus {
         match self {
-            Self::Ollama(service) => service.check_status().await,
+            Self::EngineLegacy(service) => service.check_status().await,
             Self::LlamaCpp(service) => service.check_status().await,
         }
     }
 
     pub async fn list_models(&self) -> Result<Vec<Model>, String> {
         match self {
-            Self::Ollama(service) => service.list_models().await,
+            Self::EngineLegacy(service) => service.list_models().await,
             Self::LlamaCpp(service) => service.list_models().await,
         }
     }
@@ -40,21 +41,21 @@ impl ProviderService {
         F: FnMut(ChatResponse) + Send,
     {
         match self {
-            Self::Ollama(service) => service.chat_stream(model, messages, None, on_chunk).await,
+            Self::EngineLegacy(service) => service.chat_stream(model, messages, None, on_chunk).await,
             Self::LlamaCpp(service) => service.chat_stream(model, messages, on_chunk).await,
         }
     }
 
     pub async fn pull_model(&self, name: &str) -> Result<(), String> {
         match self {
-            Self::Ollama(service) => service.pull_model(name).await,
+            Self::EngineLegacy(service) => service.pull_model(name).await,
             Self::LlamaCpp(service) => service.pull_model(name).await,
         }
     }
 
     pub async fn delete_model(&self, name: &str) -> Result<(), String> {
         match self {
-            Self::Ollama(service) => service.delete_model(name).await,
+            Self::EngineLegacy(service) => service.delete_model(name).await,
             Self::LlamaCpp(service) => service.delete_model(name).await,
         }
     }

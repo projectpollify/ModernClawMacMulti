@@ -1,5 +1,5 @@
 import { contextApi } from '@/services/context';
-import type { ChatMessage } from '@/services/ollama';
+import type { ChatMessage } from '@/services/engine';
 
 export function useContextBuilder() {
   const buildContext = async (

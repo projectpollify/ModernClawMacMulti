@@ -24,16 +24,16 @@ export function SetupStatusPanel({
   compact = false,
 }: SetupStatusPanelProps) {
   const { requiredItems, optionalItems, summary, nextStep, isRefreshing, runRefresh, settings, memoryBasePath } = useSetupStatus();
-  const ollamaStatus = useModelStore((state) => state.ollamaStatus);
+  const engineStatus = useModelStore((state) => state.engineStatus);
   const downloadProgress = useModelStore((state) => state.downloadProgress);
   const setView = useViewStore((state) => state.setView);
   const {
     openProviderApp,
-    startOllama,
+    startEngine,
     installRecommendedModel,
     initializeWorkspace,
     isOpeningDownload,
-    isStartingOllama,
+    isStartingEngine,
     isInstallingRecommendedModel,
     isInitializingWorkspace,
     isDownloadingAnyModel,
@@ -56,17 +56,15 @@ export function SetupStatusPanel({
   };
 
   const renderSetupActions = (step: SetupNextStep | SetupChecklistItem) => {
-    if (step.id === 'ollama') {
+    if (step.id === 'engine') {
       return (
         <>
           <Button variant="outline" size="sm" onClick={() => void openProviderApp()} disabled={isOpeningDownload}>
-            {isOpeningDownload ? 'Opening...' : IS_MAC_MODEL_PROVIDER ? 'Open Engine Guide' : 'Download Ollama'}
+            {isOpeningDownload ? 'Opening...' : 'Engine Guide'}
           </Button>
-          {!IS_MAC_MODEL_PROVIDER ? (
-            <Button variant="outline" size="sm" onClick={() => void startOllama()} disabled={isStartingOllama}>
-              {isStartingOllama ? 'Starting Ollama...' : 'Start Ollama'}
-            </Button>
-          ) : null}
+          <Button variant="outline" size="sm" onClick={() => void startEngine()} disabled={isStartingEngine}>
+            {isStartingEngine ? 'Starting Engine...' : 'Start Engine'}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => void runRefresh()} disabled={isRefreshing}>
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
@@ -77,7 +75,7 @@ export function SetupStatusPanel({
     if (step.id === 'model') {
       return (
         <>
-          {ollamaStatus?.running ? (
+          {engineStatus?.running ? (
             <Button size="sm" onClick={() => void installRecommendedModel()} disabled={isInstallingRecommendedModel || isDownloadingAnyModel}>
               {isInstallingRecommendedModel || isDownloadingAnyModel
                 ? IS_MAC_MODEL_PROVIDER
@@ -91,16 +89,10 @@ export function SetupStatusPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void (IS_MAC_MODEL_PROVIDER ? openProviderApp() : startOllama())}
-              disabled={IS_MAC_MODEL_PROVIDER ? isOpeningDownload : isStartingOllama}
+              onClick={() => void startEngine()}
+              disabled={isStartingEngine}
             >
-              {IS_MAC_MODEL_PROVIDER
-                ? isOpeningDownload
-                  ? 'Opening...'
-                  : 'Open Engine Guide'
-                : isStartingOllama
-                  ? 'Starting Ollama...'
-                  : 'Start Ollama First'}
+              {isStartingEngine ? 'Starting Engine...' : 'Start Engine First'}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={() => void runRefresh()} disabled={isRefreshing}>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { resolvePreferredModelName } from '@/lib/providerConfig';
 import { DEFAULT_FLOOR_MODEL } from '@/lib/voiceCatalog';
-import { ollamaApi, type Model, type ModelPullProgress, type OllamaStatus } from '@/services/ollama';
+import { engineApi, type Model, type ModelPullProgress, type EngineStatus } from '@/services/engine';
 
 export interface ModelDownloadProgress {
   model: string;
@@ -21,7 +21,7 @@ function delay(ms: number) {
 interface ModelState {
   models: Model[];
   currentModel: string | null;
-  ollamaStatus: OllamaStatus | null;
+  engineStatus: EngineStatus | null;
   isLoading: boolean;
   downloadingModel: string | null;
   downloadProgress: ModelDownloadProgress | null;
@@ -40,7 +40,7 @@ export const useModelStore = create<ModelState>()(
     (set, get) => ({
       models: [],
       currentModel: DEFAULT_FLOOR_MODEL,
-      ollamaStatus: null,
+      engineStatus: null,
       isLoading: false,
       downloadingModel: null,
       downloadProgress: null,
@@ -48,14 +48,14 @@ export const useModelStore = create<ModelState>()(
 
       checkStatus: async () => {
         try {
-          const status = await ollamaApi.checkStatus();
-          set({ ollamaStatus: status, error: null });
+          const status = await engineApi.checkStatus();
+          set({ engineStatus: status, error: null });
 
           if (status.running) {
             await get().loadModels();
           }
         } catch (error) {
-          set({ error: String(error), ollamaStatus: { running: false, error: String(error) } });
+          set({ error: String(error), engineStatus: { running: false, error: String(error) } });
         }
       },
 
@@ -63,7 +63,7 @@ export const useModelStore = create<ModelState>()(
         set({ isLoading: true });
 
         try {
-          const models = await ollamaApi.listModels();
+          const models = await engineApi.listModels();
           const currentModel = get().currentModel;
           const nextCurrentModel = resolvePreferredModelName(
             currentModel ?? DEFAULT_FLOOR_MODEL,
@@ -102,7 +102,7 @@ export const useModelStore = create<ModelState>()(
         });
 
         try {
-          await ollamaApi.pullModel(trimmedName, (progress: ModelPullProgress) => {
+          await engineApi.pullModel(trimmedName, (progress: ModelPullProgress) => {
             set({
               downloadProgress: mapPullProgress(progress),
             });
@@ -150,7 +150,7 @@ export const useModelStore = create<ModelState>()(
 
       deleteModel: async (name) => {
         try {
-          await ollamaApi.deleteModel(name);
+          await engineApi.deleteModel(name);
           await get().loadModels();
 
           if (get().currentModel === name) {

@@ -41,7 +41,7 @@ export function SettingsView() {
   const models = useModelStore((state) => state.models);
   const currentModel = useModelStore((state) => state.currentModel);
   const setCurrentModel = useModelStore((state) => state.setCurrentModel);
-  const ollamaStatus = useModelStore((state) => state.ollamaStatus);
+  const engineStatus = useModelStore((state) => state.engineStatus);
   const refreshModels = useModelStore((state) => state.refresh);
   const loadConversations = useConversationStore((state) => state.loadConversations);
   const clearConversations = useConversationStore((state) => state.clearConversations);
@@ -77,10 +77,10 @@ export function SettingsView() {
   };
 
   useEffect(() => {
-    if (!ollamaStatus) {
+    if (!engineStatus) {
       void refreshModels();
     }
-  }, [ollamaStatus, refreshModels]);
+  }, [engineStatus, refreshModels]);
 
   useEffect(() => {
     void loadFeedbackSummary();
@@ -617,11 +617,11 @@ export function SettingsView() {
                 </span>
               </div>
 
-              {!ollamaStatus?.running ? (
+              {!engineStatus?.running ? (
                 <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-700">
                   {IS_MAC_MODEL_PROVIDER
                     ? `${MODEL_PROVIDER_NAME} is not serving on port 8080. Start the local engine and load a model there to manage active models.`
-                    : 'Ollama is not running. Start it to manage installed models.'}
+                    : 'The engine is not running. Start it to manage installed models.'}
                 </div>
               ) : null}
 

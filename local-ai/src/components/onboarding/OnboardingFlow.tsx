@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { WelcomeStep } from '@/components/onboarding/WelcomeStep';
-import { OllamaStep } from '@/components/onboarding/OllamaStep';
+import { EngineStep } from '@/components/onboarding/EngineStep';
 import { ModelStep } from '@/components/onboarding/ModelStep';
 import { MemoryStep } from '@/components/onboarding/MemoryStep';
 import { CompleteStep } from '@/components/onboarding/CompleteStep';
 import { cn } from '@/lib/utils';
 
-const STEPS = ['welcome', 'ollama', 'model', 'memory', 'complete'] as const;
+const STEPS = ['welcome', 'engine', 'model', 'memory', 'complete'] as const;
 type StepName = (typeof STEPS)[number];
 
 export function OnboardingFlow() {
@@ -47,7 +47,7 @@ export function OnboardingFlow() {
         </div>
 
         {step === 'welcome' ? <WelcomeStep onNext={handleNext} /> : null}
-        {step === 'ollama' ? <OllamaStep onNext={handleNext} onBack={handleBack} /> : null}
+        {step === 'engine' ? <EngineStep onNext={handleNext} onBack={handleBack} /> : null}
         {step === 'model' ? <ModelStep onNext={handleNext} onBack={handleBack} /> : null}
         {step === 'memory' ? <MemoryStep onNext={handleNext} onBack={handleBack} /> : null}
         {step === 'complete' ? <CompleteStep onFinish={completeOnboarding} /> : null}

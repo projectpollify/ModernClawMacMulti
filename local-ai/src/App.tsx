@@ -31,6 +31,7 @@ function App() {
   const initializeMemory = useMemoryStore((state) => state.initialize);
   const currentModel = useModelStore((state) => state.currentModel);
   const availableModels = useModelStore((state) => state.models);
+  const checkStatus = useModelStore((state) => state.checkStatus);
   const setCurrentModel = useModelStore((state) => state.setCurrentModel);
   const setChatModel = useChatStore((state) => state.setModel);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
@@ -47,6 +48,10 @@ function App() {
     void loadSettings();
     void loadAgents();
   }, [loadAgents, loadSettings]);
+
+  useEffect(() => {
+    void checkStatus();
+  }, [checkStatus]);
 
   useEffect(() => {
     if (!hasLoadedSettings) {

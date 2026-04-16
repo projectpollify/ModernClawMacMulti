@@ -1,14 +1,25 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
+#[cfg(target_os = "macos")]
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use reqwest::Client;
 use tauri::State;
+#[cfg(target_os = "macos")]
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 use crate::DatabaseState;
 #[cfg(target_os = "macos")]
+use crate::services::database::Database;
+#[cfg(target_os = "macos")]
+use crate::services::llama_cpp::LlamaCppService;
+#[cfg(target_os = "macos")]
 use crate::services::llama_cpp::resolve_local_model_path;
+
+#[cfg(target_os = "macos")]
+static DIRECT_ENGINE_START_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[tauri::command]
 pub async fn setup_open_external(target: String) -> Result<(), String> {
@@ -49,7 +60,7 @@ pub async fn setup_open_external(target: String) -> Result<(), String> {
 
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn setup_start_ollama() -> Result<(), String> {
+pub async fn setup_start_engine() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let mut command = {
         let mut command = Command::new("cmd");
@@ -70,7 +81,7 @@ pub async fn setup_start_ollama() -> Result<(), String> {
         .spawn()
         .map_err(|error| {
             format!(
-                "Failed to start Ollama automatically: {}. If Ollama is not installed yet, install it first.",
+                "Failed to start engine automatically: {}. If the engine is not installed yet, install it first.",
                 error
             )
         })?;
@@ -80,13 +91,14 @@ pub async fn setup_start_ollama() -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn setup_start_ollama(state: State<'_, DatabaseState>) -> Result<(), String> {
-    let model_path = read_string_setting(&state, "directEngineModelPath")?
+pub async fn setup_start_engine(state: State<'_, DatabaseState>) -> Result<(), String> {
+    let model_path = read_string_setting(&state.db, "directEngineModelPath")?
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| {
             "No GGUF model path is configured yet. Add it in Settings under llama-server Executable / GGUF Model Path, then try Start Engine again.".to_string()
         })?;
-    start_llama_server(&state, &model_path)
+    start_llama_server(&state.db, &model_path)?;
+    wait_for_direct_engine().await
 }
 
 #[cfg(target_os = "macos")]
@@ -116,15 +128,15 @@ pub async fn setup_switch_direct_engine_model(
 
     stop_llama_server();
     sleep(Duration::from_millis(500)).await;
-    start_llama_server(&state, &model_path)?;
+    start_llama_server(&state.db, &model_path)?;
     wait_for_direct_engine().await?;
 
     Ok(model_path)
 }
 
 #[cfg(target_os = "macos")]
-fn read_string_setting(state: &State<'_, DatabaseState>, key: &str) -> Result<Option<String>, String> {
-    let value = state.db.get_setting(key)?;
+fn read_string_setting(db: &Database, key: &str) -> Result<Option<String>, String> {
+    let value = db.get_setting(key)?;
 
     Ok(value.and_then(|raw| {
         serde_json::from_str::<String>(&raw)
@@ -167,8 +179,8 @@ fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String>
 }
 
 #[cfg(target_os = "macos")]
-fn start_llama_server(state: &State<'_, DatabaseState>, model_path: &str) -> Result<(), String> {
-    let configured_executable = read_string_setting(state, "directEngineExecutablePath")?;
+fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
+    let configured_executable = read_string_setting(db, "directEngineExecutablePath")?;
     let executable = resolve_llama_server_path(configured_executable.as_deref())?;
 
     if !Path::new(model_path).exists() {
@@ -200,6 +212,25 @@ fn start_llama_server(state: &State<'_, DatabaseState>, model_path: &str) -> Res
         .map_err(|error| format!("Failed to start llama.cpp server: {}", error))?;
 
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+pub async fn ensure_direct_engine_running(db: &Database) -> Result<(), String> {
+    let start_lock = DIRECT_ENGINE_START_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = start_lock.lock().await;
+    let provider = LlamaCppService::new();
+
+    if provider.check_status().await.running {
+        return Ok(());
+    }
+
+    let Some(model_path) = read_string_setting(db, "directEngineModelPath")?
+        .filter(|value| !value.trim().is_empty()) else {
+        return Ok(());
+    };
+
+    start_llama_server(db, &model_path)?;
+    wait_for_direct_engine().await
 }
 
 #[cfg(target_os = "macos")]

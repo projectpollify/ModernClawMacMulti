@@ -1,11 +1,11 @@
 import { APP_DISPLAY_NAME, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
 import type { MemoryFile } from '@/services/memory';
-import type { Model, OllamaStatus } from '@/services/ollama';
+import type { EngineStatus, Model } from '@/services/engine';
 import type { AppSettings } from '@/types/settings';
 import type { VoiceInputStatus, VoiceOutputStatus } from '@/types/voice';
 
 export type SetupItemState = 'ready' | 'attention' | 'checking' | 'optional';
-export type SetupNextStepId = 'checking' | 'ollama' | 'model' | 'memory' | 'ready';
+export type SetupNextStepId = 'checking' | 'engine' | 'model' | 'memory' | 'ready';
 
 export interface SetupChecklistItem {
   id: string;
@@ -32,7 +32,7 @@ export interface SetupNextStep {
 interface BuildSetupChecklistArgs {
   settings: AppSettings;
   hasLoadedSettings: boolean;
-  ollamaStatus: OllamaStatus | null;
+  engineStatus: EngineStatus | null;
   models: Model[];
   modelError: string | null;
   memoryBasePath: string | null;
@@ -51,7 +51,7 @@ interface BuildSetupChecklistArgs {
 export function buildSetupChecklist({
   settings,
   hasLoadedSettings,
-  ollamaStatus,
+  engineStatus,
   models,
   modelError,
   memoryBasePath,
@@ -78,8 +78,8 @@ export function buildSetupChecklist({
   ].filter((value): value is string => Boolean(value));
 
   const requiredItems: SetupChecklistItem[] = [
-    buildOllamaItem(ollamaStatus, modelError),
-    buildModelItem(ollamaStatus, models, modelError),
+    buildEngineItem(engineStatus, modelError),
+    buildModelItem(engineStatus, models, modelError),
     buildMemoryItem(memoryBasePath, missingFiles, memoryLoading, memoryError),
   ];
 
@@ -96,7 +96,7 @@ export function buildSetupChecklist({
   };
 
   const nextStep = buildNextStep({
-    ollamaStatus,
+    engineStatus,
     models,
     memoryBasePath,
     missingFiles,
@@ -113,21 +113,21 @@ export function buildSetupChecklist({
 }
 
 function buildNextStep({
-  ollamaStatus,
+  engineStatus,
   models,
   memoryBasePath,
   missingFiles,
   memoryLoading,
   summary,
 }: {
-  ollamaStatus: OllamaStatus | null;
+  engineStatus: EngineStatus | null;
   models: Model[];
   memoryBasePath: string | null;
   missingFiles: string[];
   memoryLoading: boolean;
   summary: SetupChecklistSummary;
 }): SetupNextStep {
-  if (!ollamaStatus || (memoryLoading && !memoryBasePath)) {
+  if (!engineStatus || (memoryLoading && !memoryBasePath)) {
     return {
       id: 'checking',
       title: 'Checking this machine',
@@ -135,13 +135,13 @@ function buildNextStep({
     };
   }
 
-  if (!ollamaStatus.running) {
+  if (!engineStatus.running) {
     return {
-      id: 'ollama',
-      title: IS_MAC_MODEL_PROVIDER ? 'Get the direct engine serving first' : 'Get Ollama running first',
+      id: 'engine',
+      title: IS_MAC_MODEL_PROVIDER ? 'Get the direct engine serving first' : 'Get the engine running first',
       detail: IS_MAC_MODEL_PROVIDER
         ? `Start a local llama.cpp server on port 8080 and keep it running so ${APP_DISPLAY_NAME} can reach the model service.`
-        : `Install Ollama if needed, then start it so ${APP_DISPLAY_NAME} can reach the local model service.`,
+        : `Install the local engine if needed, then start it so ${APP_DISPLAY_NAME} can reach the model service.`,
     };
   }
 
@@ -151,7 +151,7 @@ function buildNextStep({
       title: IS_MAC_MODEL_PROVIDER ? 'Expose the recommended model' : 'Install the recommended model',
       detail: IS_MAC_MODEL_PROVIDER
         ? 'Once the direct engine is serving, expose a Gemma 4 model there so chat is ready right away.'
-        : 'Once Ollama is up, download a supported Gemma 4 model so chat is ready right away.',
+        : 'Once the engine is up, install a supported Gemma 4 model so chat is ready right away.',
     };
   }
 
@@ -178,48 +178,48 @@ function buildNextStep({
   };
 }
 
-function buildOllamaItem(ollamaStatus: OllamaStatus | null, modelError: string | null): SetupChecklistItem {
-  if (!ollamaStatus) {
+function buildEngineItem(engineStatus: EngineStatus | null, modelError: string | null): SetupChecklistItem {
+  if (!engineStatus) {
     return {
-      id: 'ollama',
+      id: 'engine',
       label: MODEL_PROVIDER_NAME,
       detail: IS_MAC_MODEL_PROVIDER
         ? 'Checking whether the direct engine is serving on port 8080.'
-        : 'Checking whether Ollama is available on this machine.',
+        : 'Checking whether the local engine is available on this machine.',
       state: 'checking',
     };
   }
 
-  if (ollamaStatus.running) {
+  if (engineStatus.running) {
     return {
-      id: 'ollama',
+      id: 'engine',
       label: MODEL_PROVIDER_NAME,
-      detail: ollamaStatus.version
-        ? `Running and ready. Detected version ${ollamaStatus.version}.`
+      detail: engineStatus.version
+        ? `Running and ready. Detected version ${engineStatus.version}.`
         : 'Running and ready for local model requests.',
       state: 'ready',
     };
   }
 
   return {
-    id: 'ollama',
+    id: 'engine',
     label: MODEL_PROVIDER_NAME,
     detail: IS_MAC_MODEL_PROVIDER
       ? `${APP_DISPLAY_NAME} needs a local llama.cpp server on port 8080 before chat can work.`
-      : `${APP_DISPLAY_NAME} needs Ollama running locally before chat can work.`,
+      : `${APP_DISPLAY_NAME} needs the local engine running before chat can work.`,
     state: 'attention',
     notes: [
-      ollamaStatus.error ??
+      engineStatus.error ??
         modelError ??
         (IS_MAC_MODEL_PROVIDER
           ? 'Start a local llama.cpp server on port 8080, then refresh setup checks.'
-          : 'Install and start Ollama, then refresh setup checks.'),
+          : 'Install and start the local engine, then refresh setup checks.'),
     ],
   };
 }
 
-function buildModelItem(ollamaStatus: OllamaStatus | null, models: Model[], modelError: string | null): SetupChecklistItem {
-  if (!ollamaStatus) {
+function buildModelItem(engineStatus: EngineStatus | null, models: Model[], modelError: string | null): SetupChecklistItem {
+  if (!engineStatus) {
     return {
       id: 'model',
       label: 'Model Installed',
@@ -228,13 +228,13 @@ function buildModelItem(ollamaStatus: OllamaStatus | null, models: Model[], mode
     };
   }
 
-  if (!ollamaStatus.running) {
+  if (!engineStatus.running) {
     return {
       id: 'model',
       label: 'Model Installed',
       detail: IS_MAC_MODEL_PROVIDER
         ? 'Start the direct engine server before checking which models are exposed there.'
-        : 'Start Ollama before checking or downloading local models.',
+        : 'Start the local engine before checking or installing local models.',
       state: 'attention',
     };
   }

@@ -9,7 +9,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 export function ModelSelector() {
   const models = useModelStore((state) => state.models);
   const currentModel = useModelStore((state) => state.currentModel);
-  const ollamaStatus = useModelStore((state) => state.ollamaStatus);
+  const engineStatus = useModelStore((state) => state.engineStatus);
   const checkStatus = useModelStore((state) => state.checkStatus);
   const setCurrentModel = useModelStore((state) => state.setCurrentModel);
   const updateActiveAgentDefaultModel = useAgentStore((state) => state.updateActiveAgentDefaultModel);
@@ -49,7 +49,7 @@ export function ModelSelector() {
     }
   };
 
-  if (!ollamaStatus?.running) {
+  if (!engineStatus?.running) {
     return (
       <button
         onClick={() => void checkStatus()}

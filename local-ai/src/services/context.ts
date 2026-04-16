@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ChatMessage } from '@/services/ollama';
+import type { ChatMessage } from '@/services/engine';
 
 export interface ContextStats {
   system_tokens: number;

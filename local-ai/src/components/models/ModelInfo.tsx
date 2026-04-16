@@ -1,4 +1,4 @@
-import type { Model } from '@/services/ollama';
+import type { Model } from '@/services/engine';
 
 interface ModelInfoProps {
   model: Model;

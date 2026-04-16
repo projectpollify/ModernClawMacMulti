@@ -4,12 +4,14 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
 
 use super::memory::MemoryState;
+#[cfg(target_os = "macos")]
+use super::setup::ensure_direct_engine_running;
 use crate::services::agent_repo::AgentRepository;
 use crate::services::context::ContextBuilder;
 use crate::services::memory::MemoryService;
 use crate::services::provider::ProviderService;
 use crate::types::{
-    BuildContextResponse, ChatMessage, ChatResponse, Model, OllamaStatus,
+    BuildContextResponse, ChatMessage, ChatResponse, EngineStatus, Model,
 };
 use crate::DatabaseState;
 
@@ -18,7 +20,19 @@ pub struct AppState {
 }
 
 #[tauri::command]
-pub async fn check_ollama_status(state: State<'_, AppState>) -> Result<OllamaStatus, String> {
+pub async fn check_engine_status(
+    state: State<'_, AppState>,
+    #[cfg(target_os = "macos")] db_state: State<'_, DatabaseState>,
+) -> Result<EngineStatus, String> {
+    #[cfg(target_os = "macos")]
+    if let Err(error) = ensure_direct_engine_running(&db_state.db).await {
+        return Ok(EngineStatus {
+            running: false,
+            version: Some("llama.cpp".to_string()),
+            error: Some(error),
+        });
+    }
+
     let provider = state.provider.lock().await;
     Ok(provider.check_status().await)
 }
@@ -80,7 +94,7 @@ pub async fn pull_model(
     if result.is_ok() {
         let _ = app.emit(
             "model-pull-progress",
-            &crate::types::OllamaPullProgress {
+            &crate::types::EnginePullProgress {
                 model: name.clone(),
                 status: "success".to_string(),
                 digest: None,

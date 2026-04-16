@@ -67,14 +67,14 @@ pub struct ChatResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OllamaStatus {
+pub struct EngineStatus {
     pub running: bool,
     pub version: Option<String>,
     pub error: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OllamaPullProgress {
+pub struct EnginePullProgress {
     #[serde(default)]
     pub model: String,
     pub status: String,

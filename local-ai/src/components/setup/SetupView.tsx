@@ -39,7 +39,7 @@ export function SetupView() {
             body={
               IS_MAC_MODEL_PROVIDER
                 ? `${MODEL_PROVIDER_NAME} needs to be serving on port 8080, at least one Gemma 4 GGUF model needs to be available, and the workspace files need to exist.`
-                : 'Ollama needs to be running, at least one local model needs to be installed, and the workspace files need to exist.'
+                : 'The local engine needs to be running, at least one local model needs to be installed, and the workspace files need to exist.'
             }
           />
           <InfoCard

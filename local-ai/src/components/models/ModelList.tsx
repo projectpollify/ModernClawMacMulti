@@ -6,7 +6,7 @@ import { useModelStore } from '@/stores/modelStore';
 export function ModelList() {
   const models = useModelStore((state) => state.models);
   const isLoading = useModelStore((state) => state.isLoading);
-  const ollamaStatus = useModelStore((state) => state.ollamaStatus);
+  const engineStatus = useModelStore((state) => state.engineStatus);
   const error = useModelStore((state) => state.error);
   const clearError = useModelStore((state) => state.clearError);
   const refresh = useModelStore((state) => state.refresh);
@@ -31,11 +31,11 @@ export function ModelList() {
           </button>
         </div>
 
-        {!ollamaStatus?.running ? (
+        {!engineStatus?.running ? (
           <div className="mb-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-700">
             {IS_MAC_MODEL_PROVIDER
               ? 'The direct engine is not serving on port 8080. Start llama.cpp and expose a model there, then refresh.'
-              : 'Ollama is not running. Start Ollama to manage local models.'}
+              : 'The engine is not running. Start the engine to manage local models.'}
           </div>
         ) : null}
 
