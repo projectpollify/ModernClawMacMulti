@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
+import { getModelDisplayName, IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
 import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import type { Model } from '@/services/engine';
@@ -44,7 +44,7 @@ export function ModelCard({ model }: ModelCardProps) {
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold">{model.name}</h3>
+          <h3 className="truncate text-base font-semibold">{getModelDisplayName(model.name)}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {model.details.parameter_size || 'Unknown size'} -{' '}
             {model.details.quantization_level || 'Unknown quantization'}

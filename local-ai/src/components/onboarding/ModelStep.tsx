@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { useSetupActions } from '@/hooks/useSetupActions';
 import {
   APP_DISPLAY_NAME,
+  getModelDisplayName,
   IS_MAC_MODEL_PROVIDER,
   MODEL_PROVIDER_NAME,
   isRecommendedModelName,
@@ -83,7 +84,7 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
             {IS_MAC_MODEL_PROVIDER ? 'Loaded Models Ready' : 'Installed Models Ready'}
           </h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {models.map((model) => model.name).join(', ')}. The next step is confirming the workspace files.
+            {models.map((model) => getModelDisplayName(model.name)).join(', ')}. The next step is confirming the workspace files.
           </p>
         </div>
       ) : (
@@ -109,7 +110,7 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">{model.name}</p>
+                    <p className="font-medium">{getModelDisplayName(model.name)}</p>
                     {model.recommended ? (
                       <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs text-primary">Recommended</span>
                     ) : null}
@@ -175,12 +176,12 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
                 ? 'Checking Direct Engine...'
                 : 'Installing Recommended Model...'
               : downloadingModel
-                ? `Downloading ${downloadingModel}...`
+                ? `Downloading ${getModelDisplayName(downloadingModel)}...`
                 : IS_MAC_MODEL_PROVIDER
                   ? 'Confirm Gemma 4 In Engine'
                   : selectedModel === DEFAULT_FLOOR_MODEL
-                    ? `Download ${DEFAULT_FLOOR_MODEL} (Recommended)`
-                    : `Download ${selectedModel}`}
+                    ? `Download ${getModelDisplayName(DEFAULT_FLOOR_MODEL)} (Recommended)`
+                    : `Download ${getModelDisplayName(selectedModel)}`}
           </Button>
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
+import { getModelDisplayName, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
 import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
@@ -92,7 +92,9 @@ export function ModelSelector() {
       >
         {isSwitchingModel ? <SpinnerIcon className="h-3.5 w-3.5 text-primary" /> : <span className="h-2 w-2 rounded-full bg-green-500" />}
         <span className="max-w-56 truncate">
-          {isSwitchingModel ? `Switching to ${pendingModelName ?? 'model'}...` : currentModel || 'Select Model'}
+          {isSwitchingModel
+            ? `Switching to ${getModelDisplayName(pendingModelName) || 'model'}...`
+            : getModelDisplayName(currentModel) || 'Select Model'}
         </span>
         <ChevronIcon className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180', isSwitchingModel && 'opacity-40')} />
       </button>
@@ -110,7 +112,7 @@ export function ModelSelector() {
             </p>
             {isSwitchingModel && pendingModelName ? (
               <p className="mt-2 text-xs text-primary">
-                Restarting the engine with {pendingModelName}. This usually takes a few seconds.
+                Restarting the engine with {getModelDisplayName(pendingModelName)}. This usually takes a few seconds.
               </p>
             ) : null}
           </div>
@@ -128,7 +130,7 @@ export function ModelSelector() {
                     model.name === currentModel && 'bg-accent text-accent-foreground'
                   )}
                 >
-                  <span className="flex-1 truncate">{model.name}</span>
+                  <span className="flex-1 truncate">{getModelDisplayName(model.name)}</span>
                   {isSwitchingModel && model.name === pendingModelName ? (
                     <span className="inline-flex items-center gap-1 text-xs text-primary">
                       <SpinnerIcon className="h-3 w-3" />

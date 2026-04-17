@@ -9,9 +9,24 @@ export const MODEL_PROVIDER_STATUS_URL = IS_MAC_MODEL_PROVIDER
 export const MODEL_PROVIDER_APP_PATH = '';
 export const MODEL_PROVIDER_DOWNLOAD_URL = 'https://github.com/ggml-org/llama.cpp';
 
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  'google/gemma-4-e2b': 'Conversational',
+  'google/gemma-4-e4b': 'Thinking',
+  'gemma4:e2b': 'Conversational',
+  'gemma4:e4b': 'Thinking',
+};
+
 export function isRecommendedModelName(name: string | null | undefined) {
   const normalized = name?.trim().toLowerCase();
   return Boolean(normalized && (normalized.includes('gemma4') || normalized.includes('gemma-4')));
+}
+
+export function getModelDisplayName(name: string | null | undefined) {
+  if (!name) {
+    return '';
+  }
+
+  return MODEL_DISPLAY_NAMES[name] ?? name;
 }
 
 export function resolvePreferredModelName(

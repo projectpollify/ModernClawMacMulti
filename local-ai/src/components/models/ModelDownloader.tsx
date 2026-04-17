@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ModelDownloadProgressCard } from '@/components/models/ModelDownloadProgressCard';
-import { IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
+import { getModelDisplayName, IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
 import { CURATED_FLOOR_MODELS } from '@/lib/voiceCatalog';
 import { cn } from '@/lib/utils';
 import { useModelStore } from '@/stores/modelStore';
@@ -26,7 +26,7 @@ export function ModelDownloader() {
         <div className="flex flex-wrap gap-2">
           {CURATED_FLOOR_MODELS.map((model) => (
             <div key={model.name} className="rounded-xl border border-border bg-background px-3 py-2 text-left text-sm">
-              <div className="font-medium">{model.name}</div>
+              <div className="font-medium">{getModelDisplayName(model.name)}</div>
               <div className="mt-1 text-xs text-muted-foreground">{model.description}</div>
             </div>
           ))}
@@ -54,7 +54,7 @@ export function ModelDownloader() {
             )}
             title={model.description}
           >
-            <span className="font-medium">{model.name}</span>
+            <span className="font-medium">{getModelDisplayName(model.name)}</span>
             <span className="ml-2 text-muted-foreground">{model.size}</span>
           </button>
         ))}

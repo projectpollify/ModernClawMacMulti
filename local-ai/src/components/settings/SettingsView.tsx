@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { ModelCard } from '@/components/models/ModelCard';
 import { ModelDownloader } from '@/components/models/ModelDownloader';
 import { SetupStatusPanel } from '@/components/setup/SetupStatusPanel';
-import { APP_DISPLAY_NAME, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
+import { APP_DISPLAY_NAME, getModelDisplayName, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
 import { CURATED_FLOOR_MODELS, CURATED_PIPER_VOICES, DEFAULT_FLOOR_MODEL } from '@/lib/voiceCatalog';
 import { getEffectiveVoiceSettings } from '@/lib/voiceSettings';
 import { getDefaultVoicePaths } from '@/lib/voicePaths';
@@ -131,12 +131,12 @@ export function SettingsView() {
     const preferred = CURATED_FLOOR_MODELS.map((model) => ({
       name: model.name,
       label: installedNames.has(model.name)
-        ? `${model.name} (${model.recommended ? 'primary lane' : 'lighter lane'}, installed)`
-        : `${model.name} (${model.recommended ? 'primary lane' : 'lighter lane'})`,
+        ? `${getModelDisplayName(model.name)} (${model.recommended ? 'primary lane' : 'lighter lane'}, installed)`
+        : `${getModelDisplayName(model.name)} (${model.recommended ? 'primary lane' : 'lighter lane'})`,
     }));
     const seen = new Set<string>();
 
-    return [...preferred, ...models.map((model) => ({ name: model.name, label: model.name }))].filter((option) => {
+    return [...preferred, ...models.map((model) => ({ name: model.name, label: getModelDisplayName(model.name) }))].filter((option) => {
       if (seen.has(option.name)) {
         return false;
       }
@@ -613,7 +613,7 @@ export function SettingsView() {
                   </p>
                 </div>
                 <span className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
-                  Active: {currentModel ?? 'None'}
+                  Active: {getModelDisplayName(currentModel) || 'None'}
                 </span>
               </div>
 
