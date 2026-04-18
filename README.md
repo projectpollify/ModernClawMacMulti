@@ -13,7 +13,7 @@ The product is intentionally focused:
 
 ## What It Includes
 
-- local chat with Ollama
+- local chat with the direct engine (llama.cpp)
 - persistent conversation history
 - drag-drop or picker-based image understanding in chat
 - editable `SOUL.md`, `USER.md`, and `MEMORY.md`
@@ -61,6 +61,8 @@ If you want to contribute or set up the project as a developer, start here:
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): collaboration standards for the project
 - [docs/runbooks/RUNBOOK.md](docs/runbooks/RUNBOOK.md): bring-up and clean-machine validation
 - [docs/product/PROGRESS.md](docs/product/PROGRESS.md): current execution focus and open questions
+- [VISION.md](VISION.md): product vision, ecosystem layers, and long-term pipeline
+- [docs/product/LOCAL_AGENT_TOOL_LAYER.md](docs/product/LOCAL_AGENT_TOOL_LAYER.md): implementation guide for tool-enabled local agents
 
 ## Technology Stack
 
@@ -69,7 +71,7 @@ If you want to contribute or set up the project as a developer, start here:
 - TypeScript
 - Rust
 - SQLite
-- Ollama
+- llama.cpp (direct engine)
 - Piper
 - Whisper
 
@@ -100,8 +102,8 @@ To run the app locally you currently need:
 
 - Node.js
 - Rust toolchain
-- Ollama installed and running
-- a supported local model available in Ollama
+- llama.cpp (`llama-server`) installed and running
+- a supported GGUF model available on disk
 
 For voice features you also need:
 
@@ -121,10 +123,10 @@ Install these first:
 - Node.js
 - Rust toolchain via `rustup`
 
-Then install Ollama:
+Then install llama.cpp:
 
-- from [ollama.com/download](https://ollama.com/download)
-- or from the in-app `Download Ollama` action after the app is running
+- install via Homebrew on Mac: `brew install llama.cpp`
+- or build from source at [github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
 
 Important current scope:
 
@@ -155,22 +157,21 @@ npm run tauri:dev
 
 After the app opens, use onboarding or the `Setup` page and follow the required steps in this order:
 
-1. Get Ollama running.
-2. Install the recommended model, currently `gemma4:e4b`.
+1. Get the direct engine (`llama-server`) running with a supported GGUF model.
+2. Confirm the recommended model (`gemma4:e4b`) is available through the engine.
 3. Confirm the workspace files are initialized.
 
 Current in-app helpers:
 
-- `Download Ollama` opens the Ollama site
-- `Start Ollama` tries to launch the local service
-- `Install Recommended Model` downloads the default supported Gemma 4 lane
+- `Start Engine` tries to launch the local engine service
+- `Confirm Gemma 4 In Engine` checks that the recommended model is available
 - `Initialize Workspace` creates `SOUL.md`, `USER.md`, and `MEMORY.md`
 
 ### 6. Confirm Core Setup Is Ready
 
 Core setup is ready when:
 
-- Ollama shows as running
+- the direct engine shows as running
 - at least one local model is installed
 - workspace files are ready
 
@@ -183,7 +184,7 @@ Current setup behavior:
 - onboarding ends with a shared setup checklist
 - the sidebar includes a dedicated `Setup` surface
 - chat shows an attention banner when required setup is incomplete
-- required setup covers Ollama, installed model availability, and workspace files
+- required setup covers the direct engine, installed model availability, and workspace files
 - setup surfaces now highlight the single next required action for the machine
 - voice input and output are treated as optional features
 
@@ -194,7 +195,7 @@ Current multimodal behavior:
 - image and audio attachments are copied into the active workspace under `attachments/`
 - audio-note transcripts are added to the user message content before the model request is built
 - conversation history stores attachment metadata and file paths rather than binary blobs
-- the Ollama request only base64-encodes images at send time
+- the engine request only base64-encodes images at send time
 
 ## Development
 
@@ -215,7 +216,7 @@ npm run tauri:build
 ## Current Limits
 
 - Windows is the validated platform today
-- Ollama remains an external dependency
+- llama.cpp (`llama-server`) remains an external dependency for now, with bundling planned
 - Piper and Whisper dependency delivery is still manual on a clean machine
 - knowledge files are loaded directly rather than selectively retrieved
 - daily logs are user-written notes, not automatic summaries

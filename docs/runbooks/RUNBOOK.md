@@ -32,7 +32,7 @@ Important rule:
 ## Commands
 
 ```bash
-cd /Users/shawn/Desktop/modernclawDirectEnginMac/local-ai
+cd /Users/shawn/Desktop/ModernClawMacMulti/local-ai
 curl http://127.0.0.1:8080/v1/models
 npm run tauri:dev
 ```
