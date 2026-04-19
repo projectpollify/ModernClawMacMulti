@@ -153,6 +153,17 @@ fn read_string_setting(db: &Database, key: &str) -> Result<Option<String>, Strin
 }
 
 #[cfg(target_os = "macos")]
+fn read_usize_setting(db: &Database, key: &str) -> Result<Option<usize>, String> {
+    let value = db.get_setting(key)?;
+
+    Ok(value.and_then(|raw| {
+        serde_json::from_str::<usize>(&raw)
+            .ok()
+            .or_else(|| raw.trim().parse::<usize>().ok())
+    }))
+}
+
+#[cfg(target_os = "macos")]
 fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String> {
     let candidates = configured
         .into_iter()
@@ -182,6 +193,9 @@ fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String>
 fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     let configured_executable = read_string_setting(db, "directEngineExecutablePath")?;
     let executable = resolve_llama_server_path(configured_executable.as_deref())?;
+    let context_window_size = read_usize_setting(db, "contextWindowSize")?
+        .unwrap_or(4096)
+        .max(512);
 
     if !Path::new(model_path).exists() {
         return Err(format!(
@@ -202,6 +216,8 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     }
 
     command
+        .arg("--ctx-size")
+        .arg(context_window_size.to_string())
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--port")

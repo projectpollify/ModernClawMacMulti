@@ -387,6 +387,7 @@ fn local_model_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
     if let Some(home) = std::env::var_os("HOME") {
+        roots.push(PathBuf::from(&home).join(".lmstudio/models"));
         roots.push(PathBuf::from(&home).join(".cache/lm-studio/models"));
     }
 
