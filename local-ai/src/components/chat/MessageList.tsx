@@ -14,7 +14,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   const showStreamingBubble = isStreaming || (isLoading && Boolean(streamingMetrics));
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
+    <div className="mx-auto flex w-full max-w-[58rem] flex-col gap-7 px-2 py-2">
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}

@@ -19,7 +19,7 @@ import { historyApi } from '@/services/history';
 import { memoryApi } from '@/services/memory';
 import type { AgentVoiceSettings, MessageFeedbackSummary, Theme } from '@/types';
 
-const CONTEXT_WINDOW_OPTIONS = [2048, 4096, 8192, 16384, 32768];
+const CONTEXT_WINDOW_OPTIONS = [2048, 4096, 8192, 16384, 32768, 65536, 131072];
 const WHISPER_LANGUAGE_OPTIONS = [
   { value: 'auto', label: 'Auto detect' },
   { value: 'en', label: 'English' },
@@ -223,15 +223,16 @@ export function SettingsView() {
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <div className="mx-auto max-w-5xl space-y-8">
+      <div className="mx-auto max-w-6xl space-y-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Control Room</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">Settings</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
               Configure appearance, model defaults, storage behavior, privacy, and voice for your main {APP_DISPLAY_NAME} workspace. Joe Support stays built in for setup and troubleshooting without exposing full multi-brain management.
             </p>
           </div>
-          <Button variant="outline" onClick={() => void refreshModels()}>
+          <Button variant="outline" size="sm" onClick={() => void refreshModels()}>
             Refresh Models
           </Button>
         </div>
@@ -249,7 +250,7 @@ export function SettingsView() {
 
         <SetupStatusPanel description="Use this as the single readiness view for install checks, troubleshooting, and first-run confidence." />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
           <div className="space-y-8">
             <SettingsSection title="Appearance">
               <SettingRow label="Theme" description="Choose light, dark, or follow your system setting.">
@@ -568,11 +569,17 @@ export function SettingsView() {
                 label="Memory Folder"
                 description="This is where SOUL.md, USER.md, MEMORY.md, logs, knowledge files, and the default voice tool folders live."
                 stackOnMobile
+                alignTop
               >
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <code className="max-w-[320px] rounded-lg bg-secondary px-2.5 py-1.5 text-xs text-secondary-foreground">
-                    {settings.memoryPath || 'Default'}
-                  </code>
+                <div className="flex w-full max-w-[540px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                  <div
+                    title={settings.memoryPath || 'Default'}
+                    className="min-w-0 flex-1 rounded-2xl border border-border/70 bg-secondary/75 px-4 py-2.5 text-secondary-foreground"
+                  >
+                    <code className="block truncate font-mono text-[12px] leading-5">
+                      {settings.memoryPath || 'Default'}
+                    </code>
+                  </div>
                   <Button variant="outline" size="sm" onClick={() => void openMemoryFolder()}>
                     Open
                   </Button>
@@ -582,11 +589,12 @@ export function SettingsView() {
 
             <div className="border-t border-border pt-6">
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => resetOnboarding()}>
+                <Button variant="outline" size="sm" onClick={() => resetOnboarding()}>
                   Restart Onboarding
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => void handleReset()}
                   className="border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-600"
                 >
@@ -604,7 +612,7 @@ export function SettingsView() {
               onRefresh={() => void loadFeedbackSummary()}
             />
 
-            <section className="rounded-[30px] border border-border bg-background/75 p-5 shadow-sm">
+            <section className="rounded-[2rem] border border-border/70 bg-[hsl(var(--panel-strong))] p-6 shadow-[var(--surface-shadow)] backdrop-blur-[18px]">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold tracking-tight">Model Management</h2>
@@ -612,7 +620,7 @@ export function SettingsView() {
                     Use the header model picker or the model cards below to save the current model for this workspace.
                   </p>
                 </div>
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
+                <span className="inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2.5 py-1 text-[11px] text-secondary-foreground">
                   Active: {getModelDisplayName(currentModel) || 'None'}
                 </span>
               </div>
@@ -625,7 +633,7 @@ export function SettingsView() {
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-2xl border border-border bg-background/80 p-4">
+              <div className="mt-5 rounded-[1.6rem] border border-border/70 bg-background/80 p-4 shadow-[var(--surface-shadow-soft)]">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {IS_MAC_MODEL_PROVIDER ? 'Direct Engine Models' : 'Download'}
                 </h3>
@@ -636,7 +644,7 @@ export function SettingsView() {
                 {models.length > 0 ? (
                   models.map((model) => <ModelCard key={model.name} model={model} />)
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-background/70 p-5 text-sm text-muted-foreground">
+                  <div className="rounded-[1.6rem] border border-dashed border-border bg-background/70 p-5 text-sm text-muted-foreground">
                     {IS_MAC_MODEL_PROVIDER ? 'No compatible local GGUF models are currently available.' : 'No models installed yet.'}
                   </div>
                 )}
@@ -657,8 +665,8 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-border bg-background/75 p-5 shadow-sm">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <section className="rounded-[2rem] border border-border/70 bg-[hsl(var(--panel-strong))] p-6 shadow-[var(--surface-shadow)] backdrop-blur-[18px]">
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       <div className="mt-5 space-y-4">{children}</div>
     </section>
   );
@@ -669,24 +677,30 @@ function SettingRow({
   description,
   children,
   stackOnMobile = false,
+  alignTop = false,
 }: {
   label: string;
   description: string;
   children: ReactNode;
   stackOnMobile?: boolean;
+  alignTop?: boolean;
 }) {
   return (
     <div
       className={cn(
-        'flex gap-4 border-b border-border/70 py-3 last:border-b-0 last:pb-0',
-        stackOnMobile ? 'flex-col sm:flex-row sm:items-center sm:justify-between' : 'items-center justify-between'
+        'flex gap-4 border-b border-border/55 py-4 last:border-b-0 last:pb-0',
+        stackOnMobile
+          ? alignTop
+            ? 'flex-col sm:flex-row sm:items-start sm:justify-between'
+            : 'flex-col sm:flex-row sm:items-center sm:justify-between'
+          : 'items-center justify-between'
       )}
     >
-      <div className="max-w-xl">
+      <div className={cn('max-w-xl', stackOnMobile && 'sm:max-w-[20rem]', alignTop && 'sm:pt-1')}>
         <p className="text-sm font-medium">{label}</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className={cn('shrink-0', stackOnMobile && 'min-w-0 w-full sm:w-auto')}>{children}</div>
     </div>
   );
 }
@@ -715,7 +729,7 @@ function VoiceStatusCard({
   onDismissError?: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm">
+    <div className="rounded-[1.4rem] border border-border/70 bg-background/70 p-4 text-sm shadow-[var(--surface-shadow-soft)]">
       <p className="font-medium">{available ? readyLabel : notReadyLabel}</p>
       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
         <p>{executableLabel}: {executableFound ? 'found' : 'missing'}</p>
@@ -725,7 +739,7 @@ function VoiceStatusCard({
         ))}
       </div>
       {error ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">
           <span>{error}</span>
           {onDismissError ? (
             <Button variant="ghost" size="sm" onClick={onDismissError}>
@@ -746,14 +760,16 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boo
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-6 w-11 rounded-full transition-colors',
-        checked ? 'bg-primary' : 'bg-muted'
+        'relative h-7 w-12 rounded-full border transition-all duration-150',
+        checked
+          ? 'border-primary/20 bg-primary/90 shadow-[0_8px_22px_hsl(var(--primary)/0.18)]'
+          : 'border-border/80 bg-muted/85'
       )}
     >
       <span
         className={cn(
-          'absolute top-1 h-4 w-4 rounded-full bg-white transition-transform',
-          checked ? 'translate-x-6' : 'translate-x-1'
+          'absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(15,23,42,0.14)] transition-transform duration-150',
+          checked ? 'translate-x-[22px]' : 'translate-x-0'
         )}
       />
     </button>
@@ -778,7 +794,7 @@ function FeedbackSummaryCard({
   const helpfulRate = ratedCount > 0 ? Math.round((helpfulCount / ratedCount) * 100) : null;
 
   return (
-    <section className="rounded-[30px] border border-border bg-background/75 p-5 shadow-sm">
+    <section className="rounded-[2rem] border border-border/70 bg-[hsl(var(--panel-strong))] p-6 shadow-[var(--surface-shadow)] backdrop-blur-[18px]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Response Feedback</h2>

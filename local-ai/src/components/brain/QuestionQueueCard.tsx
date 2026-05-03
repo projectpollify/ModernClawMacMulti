@@ -48,7 +48,7 @@ export function QuestionQueueCard({
             Your Answer
           </label>
           <span className="text-xs text-muted-foreground">
-            {formatCharacterRange(guidance)} recommended · {formatSoftLimit(guidance)} soft limit
+            {formatCharacterRange(guidance)} recommended Â· {formatSoftLimit(guidance)} soft limit
           </span>
         </div>
 
@@ -71,14 +71,14 @@ export function QuestionQueueCard({
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <Button onClick={onApply} disabled={isApplying}>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button size="sm" className="px-4" onClick={onApply} disabled={isApplying}>
           {isApplying ? 'Applying...' : 'Save Answer'}
         </Button>
-        <Button variant="outline" onClick={onDefer} disabled={isApplying}>
+        <Button size="sm" className="px-4" variant="outline" onClick={onDefer} disabled={isApplying}>
           Ask Later
         </Button>
-        <Button variant="ghost" onClick={onDismiss} disabled={isApplying}>
+        <Button size="sm" className="px-2" variant="ghost" onClick={onDismiss} disabled={isApplying}>
           Dismiss
         </Button>
       </div>

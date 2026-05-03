@@ -19,13 +19,13 @@ export function SetupView() {
           </p>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => setView('chat')}>
+            <Button variant="outline" size="sm" onClick={() => setView('chat')}>
               Back to Chat
             </Button>
-            <Button variant="outline" onClick={() => setView('settings')}>
+            <Button variant="outline" size="sm" onClick={() => setView('settings')}>
               Open Settings
             </Button>
-            <Button variant="outline" onClick={() => setView('memory')}>
+            <Button variant="outline" size="sm" onClick={() => setView('memory')}>
               Open Memory
             </Button>
           </div>

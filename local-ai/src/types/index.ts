@@ -64,16 +64,23 @@ export interface MessageMetrics {
 
 export interface MessageAttachment {
   id: string;
-  kind: 'image' | 'audio';
+  kind: 'image' | 'audio' | 'document';
   name: string;
   path: string;
   mimeType?: string;
   sizeBytes?: number;
+  extractedText?: string;
 }
 
 export interface AudioNoteDraft {
   file: File;
   transcript: string;
+  mimeType?: string;
+}
+
+export interface DocumentAttachmentDraft {
+  file: File;
+  extractedText: string;
   mimeType?: string;
 }
 

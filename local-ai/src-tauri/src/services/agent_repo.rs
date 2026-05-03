@@ -168,6 +168,43 @@ impl<'a> AgentRepository<'a> {
         Ok(())
     }
 
+    pub fn update_name(&self, agent_id: &str, name: &str) -> Result<(), String> {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return Err("Brain name cannot be empty.".to_string());
+        }
+
+        if is_builtin_profile_id(agent_id) {
+            return Err("Built-in brains cannot be renamed in this version.".to_string());
+        }
+
+        if self.get(agent_id)?.is_none() {
+            return Err(format!("Agent not found: {}", agent_id));
+        }
+
+        let normalized = trimmed.to_lowercase();
+        for agent in self.list()? {
+            if agent.agent_id != agent_id && agent.name.trim().to_lowercase() == normalized {
+                return Err("That brain name is already in use.".to_string());
+            }
+        }
+
+        let now = Utc::now().to_rfc3339();
+        let next_name = trimmed.to_string();
+
+        self.db.execute(
+            r#"
+            UPDATE agents
+            SET name = ?1,
+                updated_at = ?2
+            WHERE agent_id = ?3
+            "#,
+            &[&next_name, &now, &agent_id],
+        )?;
+
+        Ok(())
+    }
+
     pub fn delete(&self, agent_id: &str) -> Result<(), String> {
         self.db.execute("DELETE FROM agents WHERE agent_id = ?1", &[&agent_id])?;
         Ok(())

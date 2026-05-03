@@ -375,7 +375,7 @@ export function BrainView() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={resetSuggestions}>
+              <Button variant="outline" size="sm" className="px-4" onClick={resetSuggestions}>
                 Reset Seed Suggestions
               </Button>
             </div>
@@ -459,7 +459,7 @@ export function BrainView() {
           ) : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button onClick={() => void applyGuidedSetup()} disabled={isApplyingSetup}>
+            <Button size="sm" className="px-5" onClick={() => void applyGuidedSetup()} disabled={isApplyingSetup}>
               {isApplyingSetup ? 'Applying Guided Setup...' : 'Apply Guided Setup'}
             </Button>
             <p className="text-xs leading-6 text-muted-foreground">
@@ -662,7 +662,7 @@ export function BrainView() {
                   </div>
                 ) : null}
 
-                <Button onClick={() => void saveKnowledgeFile()} disabled={isSavingKnowledge}>
+                <Button size="sm" className="self-start px-5" onClick={() => void saveKnowledgeFile()} disabled={isSavingKnowledge}>
                   {isSavingKnowledge ? 'Saving Knowledge...' : 'Save Knowledge File'}
                 </Button>
               </div>
@@ -979,5 +979,4 @@ function formatTimestamp(value: string) {
     minute: '2-digit',
   });
 }
-
 

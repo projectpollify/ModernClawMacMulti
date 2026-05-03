@@ -20,33 +20,36 @@ export function Header() {
   const activeAgent = useAgentStore((state) => state.activeAgent);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur">
+    <header className="relative z-40 flex h-[4.75rem] items-center justify-between overflow-visible border-b border-border/60 bg-[hsl(var(--panel))] px-5 backdrop-blur-[18px]">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggle}
           aria-label="Toggle sidebar"
-          className="rounded-xl"
+          className="rounded-2xl border border-transparent bg-background/35 text-foreground/80 hover:border-border/60 hover:bg-background/70"
         >
           <MenuIcon className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-base font-semibold">{titles[activeView]}</h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Workspace View
+          </p>
+          <h1 className="mt-1 text-lg font-semibold">{titles[activeView]}</h1>
+          <p className="text-xs text-muted-foreground/90">
             {activeAgent ? `${activeAgent.name} workspace` : 'Local-first workspace shell'}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center gap-4 px-4">
+      <div className="relative z-50 flex flex-1 items-center justify-center gap-3 px-5">
         <BrainSelector />
         <ModelSelector />
       </div>
 
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setView('settings')}>
+        <Button variant="outline" size="icon" className="rounded-2xl" onClick={() => setView('settings')}>
           <SettingsIcon className="h-5 w-5" />
         </Button>
       </div>

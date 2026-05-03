@@ -18,7 +18,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-secondary/60 backdrop-blur',
+        'flex h-full shrink-0 flex-col overflow-hidden border-r border-border/60 bg-[hsl(var(--panel))] backdrop-blur-[22px]',
         'transition-[width] duration-200 ease-out',
         isOpen ? 'w-64' : 'w-16'
       )}
@@ -72,7 +72,7 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className={cn('border-t border-border p-2', !isOpen && 'space-y-2')}>
+      <div className={cn('border-t border-border/60 p-3', !isOpen && 'space-y-2')}>
         {isOpen ? <NewChatButton /> : <CollapsedNewChatButton />}
         <SidebarButton
           icon={<BrainIcon className="h-4 w-4" />}
@@ -111,7 +111,7 @@ export function Sidebar() {
 function SidebarSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-4">
-      <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      <h3 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         {title}
       </h3>
       {children}
@@ -140,11 +140,11 @@ function SidebarButton({
       aria-label={label}
       title={isCollapsed ? label : undefined}
       className={cn(
-        'flex w-full items-center rounded-md text-sm transition-colors',
-        isCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2',
+        'flex w-full items-center rounded-2xl text-sm transition-all duration-150',
+        isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-3',
         isActive
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ? 'bg-[hsl(var(--panel-strong))] text-foreground shadow-[var(--surface-shadow-soft)]'
+          : 'text-muted-foreground hover:bg-accent/45 hover:text-accent-foreground'
       )}
     >
       <span className="inline-flex h-5 w-5 items-center justify-center">{icon}</span>
@@ -176,7 +176,7 @@ function CollapsedActionButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-muted-foreground transition-colors hover:bg-accent/45 hover:text-accent-foreground"
     >
       {icon}
     </button>

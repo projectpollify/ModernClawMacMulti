@@ -100,14 +100,14 @@ export function SuggestionCard({
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={onAccept} disabled={isApplying}>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button size="sm" className="px-4" onClick={onAccept} disabled={isApplying}>
           {isApplying ? 'Applying...' : acceptLabel}
         </Button>
-        <Button size="sm" variant="outline" onClick={onDefer} disabled={isApplying}>
+        <Button size="sm" className="px-4" variant="outline" onClick={onDefer} disabled={isApplying}>
           Defer
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDismiss} disabled={isApplying}>
+        <Button size="sm" className="px-2" variant="ghost" onClick={onDismiss} disabled={isApplying}>
           Dismiss
         </Button>
       </div>

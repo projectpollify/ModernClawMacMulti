@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { attachmentApi } from '@/services/attachments';
-import type { AudioNoteDraft, Message } from '@/types';
+import type { AudioNoteDraft, DocumentAttachmentDraft, Message } from '@/types';
 import { generateTitleFromMessage } from '@/lib/generateTitle';
 import { IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME, MODEL_PROVIDER_STATUS_URL } from '@/lib/providerConfig';
 import { DEFAULT_FLOOR_MODEL } from '@/lib/voiceCatalog';
@@ -21,7 +21,12 @@ interface ChatState {
   streamingContent: string;
   streamingMetrics: MessageMetrics | null;
   error: string | null;
-  sendMessage: (content: string, imageFiles?: File[], audioNotes?: AudioNoteDraft[]) => Promise<void>;
+  sendMessage: (
+    content: string,
+    imageFiles?: File[],
+    audioNotes?: AudioNoteDraft[],
+    documentNotes?: DocumentAttachmentDraft[]
+  ) => Promise<void>;
   setMessageFeedback: (messageId: string, feedback?: 'up' | 'down', feedbackNote?: string) => Promise<void>;
   setModel: (model: string) => void;
   newConversation: (conversationId: string) => void;
@@ -42,7 +47,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   streamingMetrics: null,
   error: null,
 
-  sendMessage: async (content: string, imageFiles: File[] = [], audioNotes: AudioNoteDraft[] = []) => {
+  sendMessage: async (
+    content: string,
+    imageFiles: File[] = [],
+    audioNotes: AudioNoteDraft[] = [],
+    documentNotes: DocumentAttachmentDraft[] = []
+  ) => {
     const { currentModel, messages, currentConversationId } = get();
     const appSettings = useSettingsStore.getState().settings;
     const trimmedContent = content.trim();
@@ -58,7 +68,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return;
     }
 
-    if (!trimmedContent && imageFiles.length === 0 && normalizedAudioNotes.length === 0) {
+    if (!trimmedContent && imageFiles.length === 0 && normalizedAudioNotes.length === 0 && documentNotes.length === 0) {
       return;
     }
 
@@ -87,6 +97,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           filename: note.file.name,
           kind: 'audio',
           mimeType: note.mimeType ?? note.file.type,
+          bytes,
+        });
+      }),
+      ...documentNotes.map(async (note) => {
+        const bytes = new Uint8Array(await note.file.arrayBuffer());
+        return attachmentApi.storeAttachment({
+          conversationId,
+          filename: note.file.name,
+          kind: 'document',
+          mimeType: note.mimeType ?? note.file.type,
+          extractedText: note.extractedText,
           bytes,
         });
       }),
@@ -426,9 +447,18 @@ function normalizeChatError(error: unknown): string {
 }
 
 function toChatMessage(message: Message): ChatMessage {
+  const documentSections =
+    message.attachments
+      ?.filter((attachment) => attachment.kind === 'document' && attachment.extractedText?.trim())
+      .map(
+        (attachment, index) =>
+          `Attached document ${index + 1}: ${attachment.name}\n${attachment.extractedText?.trim()}`
+      ) ?? [];
+  const content = [message.content, ...documentSections].filter(Boolean).join('\n\n');
+
   return {
     role: message.role,
-    content: message.content,
+    content,
     images:
       message.attachments
         ?.filter((attachment) => attachment.kind === 'image')

@@ -1,7 +1,7 @@
 import { type ChangeEvent, type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { convertAudioBlobToWav } from '@/lib/audio';
 import { cn } from '@/lib/utils';
-import type { AudioNoteDraft } from '@/types';
+import type { AudioNoteDraft, DocumentAttachmentDraft } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useVoiceStore } from '@/stores/voiceStore';
@@ -9,6 +9,9 @@ import { useVoiceStore } from '@/stores/voiceStore';
 const MESSAGE_CHARACTER_LIMIT = 2000;
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_AUDIO_ATTACHMENTS = 2;
+const MAX_DOCUMENT_ATTACHMENTS = 4;
+const MAX_DOCUMENT_TEXT_CHARACTERS = 20000;
+const SUPPORTED_DOCUMENT_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'csv', 'json', 'log']);
 
 interface PendingImageAttachment {
   id: string;
@@ -24,18 +27,26 @@ interface PendingAudioAttachment {
   isTranscribing: boolean;
 }
 
+interface PendingDocumentAttachment {
+  id: string;
+  file: File;
+  extractedText: string;
+}
+
 export function MessageInput() {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isPreparingMic, setIsPreparingMic] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
   const [pendingAudioNotes, setPendingAudioNotes] = useState<PendingAudioAttachment[]>([]);
+  const [pendingDocuments, setPendingDocuments] = useState<PendingDocumentAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDraggingAttachments, setIsDraggingAttachments] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImagesRef = useRef<PendingImageAttachment[]>([]);
   const pendingAudioNotesRef = useRef<PendingAudioAttachment[]>([]);
+  const pendingDocumentsRef = useRef<PendingDocumentAttachment[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -61,6 +72,10 @@ export function MessageInput() {
   }, [pendingAudioNotes]);
 
   useEffect(() => {
+    pendingDocumentsRef.current = pendingDocuments;
+  }, [pendingDocuments]);
+
+  useEffect(() => {
     return () => {
       stopStream();
       pendingImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
@@ -70,7 +85,10 @@ export function MessageInput() {
 
   const handleSubmit = () => {
     if (
-      (!input.trim() && pendingImages.length === 0 && pendingAudioNotes.length === 0) ||
+      (!input.trim() &&
+        pendingImages.length === 0 &&
+        pendingAudioNotes.length === 0 &&
+        pendingDocuments.length === 0) ||
       isLoading ||
       hasPendingAudioTranscription
     ) {
@@ -85,11 +103,17 @@ export function MessageInput() {
         transcript: item.transcript,
         mimeType: item.file.type,
       }));
+    const documentsToSend: DocumentAttachmentDraft[] = pendingDocuments.map((item) => ({
+      file: item.file,
+      extractedText: item.extractedText,
+      mimeType: item.file.type,
+    }));
 
-    void sendMessage(input.trim(), imagesToSend, audioNotesToSend);
+    void sendMessage(input.trim(), imagesToSend, audioNotesToSend, documentsToSend);
     setInput('');
     clearPendingImages();
     clearPendingAudioNotes();
+    clearPendingDocuments();
     setAttachmentError(null);
   };
 
@@ -219,15 +243,17 @@ export function MessageInput() {
   const addPendingAttachments = async (files: File[]) => {
     const imageFiles = files.filter((file) => file.type.startsWith('image/'));
     const audioFiles = files.filter((file) => file.type.startsWith('audio/'));
+    const documentFiles = files.filter(isSupportedDocumentFile);
 
-    if (imageFiles.length + audioFiles.length !== files.length) {
-      setAttachmentError('Only image and audio files can be attached right now.');
+    if (imageFiles.length + audioFiles.length + documentFiles.length !== files.length) {
+      setAttachmentError('Only images, audio notes, and text-based documents can be attached right now.');
     } else {
       setAttachmentError(null);
     }
 
     addPendingImages(imageFiles);
     await addPendingAudioFiles(audioFiles);
+    await addPendingDocuments(documentFiles);
   };
 
   const addPendingImages = (files: File[]) => {
@@ -343,6 +369,40 @@ export function MessageInput() {
     });
   };
 
+  const addPendingDocuments = async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const availableSlots = Math.max(0, MAX_DOCUMENT_ATTACHMENTS - pendingDocumentsRef.current.length);
+    const nextFiles = files.slice(0, availableSlots);
+
+    if (nextFiles.length < files.length) {
+      setAttachmentError(`You can attach up to ${MAX_DOCUMENT_ATTACHMENTS} documents at a time.`);
+    }
+
+    for (const file of nextFiles) {
+      try {
+        const extractedText = await extractDocumentText(file);
+        if (!extractedText.trim()) {
+          setAttachmentError(`"${file.name}" did not contain usable text.`);
+          continue;
+        }
+
+        setPendingDocuments((current) => [
+          ...current,
+          {
+            id: crypto.randomUUID(),
+            file,
+            extractedText,
+          },
+        ]);
+      } catch (error) {
+        setAttachmentError(`Could not read "${file.name}" as a supported text document. (${String(error)})`);
+      }
+    }
+  };
+
   const removePendingImage = (id: string) => {
     setPendingImages((current) => {
       const target = current.find((item) => item.id === id);
@@ -363,6 +423,10 @@ export function MessageInput() {
     });
   };
 
+  const removePendingDocument = (id: string) => {
+    setPendingDocuments((current) => current.filter((item) => item.id !== id));
+  };
+
   const clearPendingImages = () => {
     setPendingImages((current) => {
       current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
@@ -375,6 +439,10 @@ export function MessageInput() {
       current.forEach((item) => URL.revokeObjectURL(item.audioUrl));
       return [];
     });
+  };
+
+  const clearPendingDocuments = () => {
+    setPendingDocuments([]);
   };
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
@@ -402,7 +470,7 @@ export function MessageInput() {
     <div className="mx-auto max-w-3xl">
       <div
         className={cn(
-          'rounded-2xl border border-border bg-background/90 p-2 transition-colors',
+          'rounded-[1.8rem] border border-border/80 bg-[hsl(var(--panel-strong))] p-3 shadow-[var(--surface-shadow)] backdrop-blur-[22px] transition-colors',
           isDraggingAttachments && 'border-primary bg-primary/5'
         )}
         onDragOver={handleDragOver}
@@ -412,12 +480,12 @@ export function MessageInput() {
         {pendingImages.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-2 px-1 pt-1">
             {pendingImages.map((item) => (
-              <div key={item.id} className="relative overflow-hidden rounded-xl border border-border bg-secondary/40">
+              <div key={item.id} className="relative overflow-hidden rounded-2xl border border-border bg-secondary/35 shadow-[var(--surface-shadow-soft)]">
                 <img src={item.previewUrl} alt={item.file.name} className="h-20 w-20 object-cover" />
                 <button
                   type="button"
                   onClick={() => removePendingImage(item.id)}
-                  className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
+                className="absolute right-1.5 top-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
                   aria-label={`Remove ${item.file.name}`}
                   title="Remove image"
                 >
@@ -430,7 +498,7 @@ export function MessageInput() {
         {pendingAudioNotes.length > 0 ? (
           <div className="mb-2 space-y-2 px-1 pt-1">
             {pendingAudioNotes.map((item) => (
-              <div key={item.id} className="relative rounded-xl border border-border bg-secondary/40 p-3">
+              <div key={item.id} className="relative rounded-2xl border border-border bg-secondary/35 p-3 shadow-[var(--surface-shadow-soft)]">
                 <button
                   type="button"
                   onClick={() => removePendingAudioNote(item.id)}
@@ -449,8 +517,27 @@ export function MessageInput() {
             ))}
           </div>
         ) : null}
+        {pendingDocuments.length > 0 ? (
+          <div className="mb-2 space-y-2 px-1 pt-1">
+            {pendingDocuments.map((item) => (
+              <div key={item.id} className="relative rounded-2xl border border-border bg-secondary/35 p-3 shadow-[var(--surface-shadow-soft)]">
+                <button
+                  type="button"
+                  onClick={() => removePendingDocument(item.id)}
+                  className="absolute right-2 top-2 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
+                  aria-label={`Remove ${item.file.name}`}
+                  title="Remove document"
+                >
+                  X
+                </button>
+                <p className="pr-8 text-xs font-medium text-foreground">{item.file.name}</p>
+                <p className="mt-2 line-clamp-4 text-xs text-muted-foreground">{item.extractedText}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2.5">
           <div className="relative flex-1">
             <textarea
               ref={textareaRef}
@@ -460,14 +547,14 @@ export function MessageInput() {
               maxLength={MESSAGE_CHARACTER_LIMIT}
               placeholder={
                 canUseVoiceInput
-                  ? 'Type a message, drop media, or record an audio note...'
-                  : 'Type a message or drop media...'
+                  ? 'Type a message, drop media or documents, or record an audio note...'
+                  : 'Type a message or drop media/documents...'
               }
               disabled={isTranscribing || hasPendingAudioTranscription}
               rows={1}
               className={cn(
-                'w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12',
-                'focus:outline-none focus:ring-2 focus:ring-primary/50',
+                'w-full resize-none rounded-[1.35rem] border border-border/85 bg-background/85 px-4 py-3.5 pr-14 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]',
+                'focus:outline-none focus:ring-2 focus:ring-primary/35',
                 'placeholder:text-muted-foreground',
                 'disabled:cursor-not-allowed disabled:opacity-50'
               )}
@@ -483,7 +570,7 @@ export function MessageInput() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,audio/*"
+            accept="image/*,audio/*,.txt,.md,.markdown,.csv,.json,.log"
             multiple
             className="hidden"
             onChange={handleSelectAttachments}
@@ -496,13 +583,17 @@ export function MessageInput() {
               isLoading ||
               isTranscribing ||
               hasPendingAudioTranscription ||
-              (pendingImages.length >= MAX_IMAGE_ATTACHMENTS && pendingAudioNotes.length >= MAX_AUDIO_ATTACHMENTS)
+              (
+                pendingImages.length >= MAX_IMAGE_ATTACHMENTS &&
+                pendingAudioNotes.length >= MAX_AUDIO_ATTACHMENTS &&
+                pendingDocuments.length >= MAX_DOCUMENT_ATTACHMENTS
+              )
             }
             aria-label="Attach media"
-            title="Attach image or audio note"
+            title="Attach image, document, or audio note"
             className={cn(
-              'rounded-xl border border-border p-3 transition-colors',
-              'bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+              'rounded-[1.2rem] border border-border/80 p-3 transition-all duration-150',
+              'bg-background/85 text-foreground shadow-[var(--surface-shadow-soft)] hover:border-primary/20 hover:bg-accent/35 hover:text-accent-foreground',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
@@ -516,10 +607,10 @@ export function MessageInput() {
               aria-label={isRecording ? 'Stop recording' : 'Start recording'}
               title={isRecording ? 'Stop recording audio note' : 'Record audio note'}
               className={cn(
-                'rounded-xl border border-border p-3 transition-colors',
+                'rounded-[1.2rem] border border-border/80 p-3 transition-all duration-150',
                 isRecording
                   ? 'border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/15'
-                  : 'bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+                  : 'bg-background/85 text-foreground shadow-[var(--surface-shadow-soft)] hover:border-primary/20 hover:bg-accent/35 hover:text-accent-foreground',
                 'disabled:cursor-not-allowed disabled:opacity-50'
               )}
             >
@@ -530,13 +621,16 @@ export function MessageInput() {
           <button
             onClick={handleSubmit}
             disabled={
-              (!input.trim() && pendingImages.length === 0 && pendingAudioNotes.length === 0) ||
+              (!input.trim() &&
+                pendingImages.length === 0 &&
+                pendingAudioNotes.length === 0 &&
+                pendingDocuments.length === 0) ||
               isLoading ||
               isTranscribing ||
               hasPendingAudioTranscription
             }
             className={cn(
-              'rounded-xl bg-primary p-3 text-primary-foreground transition-colors hover:bg-primary/90',
+              'rounded-[1.2rem] bg-primary p-3 text-primary-foreground shadow-[0_16px_30px_hsl(var(--primary)/0.2)] transition-all duration-150 hover:translate-y-[-1px] hover:bg-primary/92',
               'disabled:cursor-not-allowed disabled:opacity-50'
             )}
           >
@@ -546,14 +640,17 @@ export function MessageInput() {
       </div>
 
       {attachmentError ? <p className="mt-2 px-1 text-xs text-amber-600">{attachmentError}</p> : null}
-      {pendingImages.length > 0 || pendingAudioNotes.length > 0 ? (
-        <p className="mt-2 px-1 text-xs text-muted-foreground">
+      {pendingImages.length > 0 || pendingAudioNotes.length > 0 || pendingDocuments.length > 0 ? (
+        <p className="mt-3 px-1 text-xs text-muted-foreground">
           {[
             pendingImages.length > 0
               ? `${pendingImages.length} image${pendingImages.length === 1 ? '' : 's'}`
               : null,
             pendingAudioNotes.length > 0
               ? `${pendingAudioNotes.length} audio note${pendingAudioNotes.length === 1 ? '' : 's'}`
+              : null,
+            pendingDocuments.length > 0
+              ? `${pendingDocuments.length} document${pendingDocuments.length === 1 ? '' : 's'}`
               : null,
           ]
             .filter(Boolean)
@@ -568,6 +665,21 @@ export function MessageInput() {
 function getPreferredMimeType() {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
   return candidates.find((value) => MediaRecorder.isTypeSupported(value));
+}
+
+function isSupportedDocumentFile(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return SUPPORTED_DOCUMENT_EXTENSIONS.has(extension);
+}
+
+async function extractDocumentText(file: File) {
+  const raw = await file.text();
+  const normalized = raw.replace(/\r\n/g, '\n').trim();
+  if (normalized.length <= MAX_DOCUMENT_TEXT_CHARACTERS) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_DOCUMENT_TEXT_CHARACTERS)}\n\n[Document truncated for prompt budget.]`;
 }
 
 function MicIcon({ className, recording = false }: { className?: string; recording?: boolean }) {

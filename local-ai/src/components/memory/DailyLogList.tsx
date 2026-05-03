@@ -34,11 +34,14 @@ export function DailyLogList() {
       </div>
 
       {dailyLogs.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border bg-background/60 p-6 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="rounded-3xl border border-dashed border-border bg-background/60 px-6 py-10 text-center">
+          <p className="mx-auto max-w-3xl text-sm leading-8 text-muted-foreground">
             No daily logs yet for {brainName}. Create the first entry to start building short-term memory for this brain.
           </p>
-          <Button className="mt-4" onClick={() => setIsComposing(true)}>
+          <Button
+            className="mt-6 min-h-[3.25rem] px-6 text-base whitespace-nowrap"
+            onClick={() => setIsComposing(true)}
+          >
             Create Today&apos;s First Entry
           </Button>
         </div>

@@ -11,6 +11,7 @@ interface AgentState {
   loadAgents: () => Promise<void>;
   setActiveAgent: (agentId: string) => Promise<void>;
   createAgent: (agent: { agentId: string; name: string; description?: string; defaultModel?: string }) => Promise<void>;
+  renameAgent: (agentId: string, name: string) => Promise<void>;
   updateActiveAgentDefaultModel: (defaultModel: string | null) => Promise<void>;
   updateActiveAgentVoiceSettings: (voiceSettings: AgentVoiceSettings) => Promise<void>;
   deleteAgent: (agentId: string) => Promise<void>;
@@ -77,6 +78,30 @@ export const useAgentStore = create<AgentState>()((set, get) => ({
 
     try {
       await agentApi.createAgent(agent);
+      const [agents, activeAgent] = await Promise.all([
+        agentApi.listAgents(),
+        agentApi.getActiveAgent(),
+      ]);
+
+      set({
+        agents,
+        activeAgent,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: String(error),
+      });
+      throw error;
+    }
+  },
+
+  renameAgent: async (agentId, name) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await agentApi.renameAgent(agentId, name);
       const [agents, activeAgent] = await Promise.all([
         agentApi.listAgents(),
         agentApi.getActiveAgent(),

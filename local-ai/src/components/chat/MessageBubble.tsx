@@ -61,13 +61,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
 
   return (
-    <div className={cn('flex gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
+    <div className={cn('flex gap-4', isUser ? 'flex-row-reverse' : 'flex-row')}>
       <div
         className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium',
+          'mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[1.2rem] text-sm font-semibold shadow-[var(--surface-shadow-soft)]',
           isUser
             ? 'bg-primary text-primary-foreground'
-            : 'bg-secondary text-secondary-foreground'
+            : 'border border-border/80 bg-[hsl(var(--panel-strong))] text-secondary-foreground'
         )}
       >
         {isUser ? 'U' : 'AI'}
@@ -75,10 +75,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
       <div
         className={cn(
-          'max-w-[80%] rounded-2xl px-4 py-3 shadow-sm',
+          'max-w-[80%] rounded-[1.65rem] border px-5 py-4 shadow-[var(--surface-shadow-soft)] backdrop-blur-[18px]',
           isUser
-            ? 'rounded-tr-sm bg-primary text-primary-foreground'
-            : 'rounded-tl-sm bg-secondary text-secondary-foreground'
+            ? 'rounded-tr-[0.5rem] border-primary/15 bg-primary text-primary-foreground'
+            : 'rounded-tl-[0.5rem] border-border/70 bg-[hsl(var(--panel-strong))] text-secondary-foreground'
         )}
       >
         {message.attachments?.some((attachment) => attachment.kind === 'image') ? (
@@ -91,7 +91,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   href={convertFileSrc(attachment.path)}
                   target="_blank"
                   rel="noreferrer"
-                  className="block overflow-hidden rounded-xl border border-black/10 bg-black/5"
+                  className="block overflow-hidden rounded-2xl border border-black/10 bg-black/5 shadow-[var(--surface-shadow-soft)]"
                 >
                   <img
                     src={convertFileSrc(attachment.path)}
@@ -107,10 +107,36 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             {message.attachments
               .filter((attachment) => attachment.kind === 'audio')
               .map((attachment) => (
-                <div key={attachment.id} className="rounded-xl border border-black/10 bg-black/5 p-3">
+                <div key={attachment.id} className="rounded-2xl border border-black/10 bg-black/5 p-3">
                   <p className="mb-2 text-xs font-medium opacity-75">{attachment.name}</p>
                   <audio controls preload="metadata" className="w-full" src={convertFileSrc(attachment.path)} />
                 </div>
+              ))}
+          </div>
+        ) : null}
+        {message.attachments?.some((attachment) => attachment.kind === 'document') ? (
+          <div className="mb-3 space-y-2">
+            {message.attachments
+              .filter((attachment) => attachment.kind === 'document')
+              .map((attachment) => (
+                <a
+                  key={attachment.id}
+                  href={convertFileSrc(attachment.path)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-2xl border border-black/10 bg-black/5 p-3 transition-colors hover:bg-black/10"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] opacity-65">Document</p>
+                      <p className="mt-1 truncate text-sm font-medium">{attachment.name}</p>
+                      {attachment.extractedText ? (
+                        <p className="mt-1 line-clamp-3 text-xs opacity-75">{attachment.extractedText}</p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-xs opacity-60">Open</span>
+                  </div>
+                </a>
               ))}
           </div>
         ) : null}
@@ -118,7 +144,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {isAssistant && showResponseMetrics ? <MessageMetricsRow metrics={messageMetrics} /> : null}
         <div
           className={cn(
-            'mt-2 flex items-center gap-2 text-xs opacity-60',
+            'mt-3 flex items-center gap-2 text-xs opacity-70',
             isUser ? 'justify-end text-right' : 'justify-start text-left'
           )}
         >
@@ -176,7 +202,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           ) : null}
         </div>
         {isAssistant && message.feedback === 'down' && isFeedbackNoteOpen ? (
-          <div className="mt-3 rounded-2xl border border-border/80 bg-background/55 p-3 text-foreground">
+          <div className="mt-4 rounded-[1.4rem] border border-border/80 bg-background/55 p-3 text-foreground">
             <label className="block text-xs font-medium text-muted-foreground" htmlFor={`feedback-note-${message.id}`}>
               What was wrong?
             </label>
@@ -212,7 +238,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         ) : null}
         {isAssistant && message.feedback === 'down' && !isFeedbackNoteOpen && message.feedbackNote ? (
-          <div className="mt-3 rounded-2xl border border-border/70 bg-background/45 px-3 py-2 text-xs text-muted-foreground">
+          <div className="mt-4 rounded-[1.2rem] border border-border/70 bg-background/45 px-3 py-2 text-xs text-muted-foreground">
             <span className="font-medium text-foreground/85">Feedback note:</span> {message.feedbackNote}
           </div>
         ) : null}

@@ -151,9 +151,10 @@ pub async fn memory_store_chat_attachment(
     filename: String,
     kind: String,
     mimeType: Option<String>,
+    extractedText: Option<String>,
     bytes: Vec<u8>,
 ) -> Result<MessageAttachment, String> {
-    if kind != "image" && kind != "audio" {
+    if kind != "image" && kind != "audio" && kind != "document" {
         return Err("Unsupported attachment kind".to_string());
     }
 
@@ -163,6 +164,7 @@ pub async fn memory_store_chat_attachment(
         &filename,
         &kind,
         mimeType.as_deref(),
+        extractedText.as_deref(),
         &bytes,
     )
 }

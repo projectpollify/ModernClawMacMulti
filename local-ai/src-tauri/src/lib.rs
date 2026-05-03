@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use commands::agents::{
-    agent_create, agent_delete, agent_get_active, agent_list, agent_set_active,
+    agent_create, agent_delete, agent_get_active, agent_list, agent_rename, agent_set_active,
     agent_update_default_model, agent_update_voice_settings,
 };
 use commands::chat::{
@@ -114,6 +114,7 @@ pub fn run() {
             agent_get_active,
             agent_set_active,
             agent_create,
+            agent_rename,
             agent_update_default_model,
             agent_update_voice_settings,
             agent_delete,

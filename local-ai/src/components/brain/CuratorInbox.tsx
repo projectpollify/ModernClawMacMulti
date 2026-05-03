@@ -42,7 +42,7 @@ export function CuratorInbox({
           <Button size="sm" variant="outline" onClick={onRefresh}>
             Refresh
           </Button>
-          <span className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
+          <span className="inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2.5 py-1 text-[11px] text-secondary-foreground">
             {packages.length} staged
           </span>
         </div>

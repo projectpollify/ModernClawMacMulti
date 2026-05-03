@@ -53,7 +53,7 @@ export function MemoryView() {
                 here as local Markdown files.
               </p>
               {activeAgent ? (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1 text-xs text-secondary-foreground">
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 py-1 text-[11px] text-secondary-foreground">
                   <span className="font-semibold uppercase tracking-[0.16em]">Active Brain</span>
                   <span>{activeAgent.name}</span>
                 </div>
@@ -67,11 +67,11 @@ export function MemoryView() {
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => void initialize()}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => void initialize()}>
                 Refresh
               </Button>
-              <Button variant="outline" onClick={() => void handleOpenFolder()} disabled={!basePath}>
+              <Button variant="outline" size="sm" onClick={() => void handleOpenFolder()} disabled={!basePath}>
                 Open Folder
               </Button>
             </div>
@@ -147,7 +147,7 @@ export function MemoryView() {
                   Recommended per file: {formatCharacterRange(knowledgeGuidance)}.
                 </p>
               </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground">
+              <span className="inline-flex items-center whitespace-nowrap rounded-full bg-secondary px-2.5 py-1 text-[11px] text-secondary-foreground">
                 {knowledgeFiles.length} files
               </span>
             </div>

@@ -10,7 +10,7 @@ export function ErrorBanner() {
   }
 
   return (
-    <div className="mx-4 mb-4 space-y-3">
+    <div className="mx-auto mb-4 w-full max-w-[58rem] space-y-3 px-2">
       {chatError ? (
         <Banner message={chatError} onDismiss={clearChatError} />
       ) : null}
@@ -23,7 +23,7 @@ export function ErrorBanner() {
 
 function Banner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+    <div className="flex items-center justify-between rounded-[1.3rem] border border-red-500/20 bg-red-500/10 px-4 py-3 shadow-[var(--surface-shadow-soft)]">
       <span className="text-sm text-red-500">{message}</span>
       <button onClick={onDismiss} className="text-sm text-red-500 hover:text-red-400">
         Dismiss

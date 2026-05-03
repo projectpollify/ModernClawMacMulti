@@ -13,8 +13,8 @@ export function ThemeToggle() {
     <button
       onClick={cycleTheme}
       className={cn(
-        'inline-flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-        'border border-transparent hover:bg-accent hover:text-accent-foreground'
+        'inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-all duration-150',
+        'border border-border/80 bg-[hsl(var(--panel-strong))] text-foreground/85 shadow-[var(--surface-shadow-soft)] hover:border-primary/20 hover:bg-accent/35 hover:text-accent-foreground'
       )}
       title={`Theme: ${theme}`}
       aria-label={`Current theme: ${theme}`}

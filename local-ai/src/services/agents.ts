@@ -73,6 +73,10 @@ export const agentApi = {
     });
   },
 
+  async renameAgent(agentId: string, name: string): Promise<void> {
+    return invoke('agent_rename', { agentId, name });
+  },
+
   async updateDefaultModel(agentId: string, defaultModel: string | null): Promise<void> {
     return invoke('agent_update_default_model', { agentId, defaultModel });
   },

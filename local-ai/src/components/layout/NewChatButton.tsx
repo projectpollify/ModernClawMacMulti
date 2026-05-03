@@ -18,7 +18,7 @@ export function NewChatButton() {
   return (
     <button
       onClick={handleNewChat}
-      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-[hsl(var(--panel-strong))] px-3.5 py-3 text-sm font-medium text-foreground shadow-[var(--surface-shadow-soft)] transition-all duration-150 hover:border-primary/20 hover:bg-accent/35 hover:text-accent-foreground"
     >
       <PlusIcon className="h-4 w-4" />
       <span>New Chat</span>

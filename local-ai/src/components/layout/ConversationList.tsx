@@ -28,7 +28,7 @@ export function ConversationList() {
 
   if (recentConversations.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border/80 bg-background/70 px-3 py-4 text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-dashed border-border/80 bg-[hsl(var(--panel-strong))] px-3.5 py-4 text-sm text-muted-foreground">
         <p>No conversations yet for {activeAgent?.name ?? 'this brain'}.</p>
         <p className="mt-2 text-xs leading-6 text-muted-foreground">
           Start a new chat to give this brain its own conversation history.
@@ -80,7 +80,7 @@ export function ConversationList() {
     <div className="space-y-4">
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label}>
-          <h3 className="mb-2 px-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <h3 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {label}
           </h3>
           <div className="space-y-1">
@@ -134,10 +134,10 @@ function ConversationItem({
   return (
     <div
       className={cn(
-        'group flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors',
+        'group flex w-full items-center gap-2 rounded-2xl border border-transparent px-2.5 py-2.5 text-left transition-all duration-150',
         isActive
-          ? 'bg-accent text-accent-foreground'
-          : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+          ? 'border-border/70 bg-[hsl(var(--panel-strong))] text-accent-foreground shadow-[var(--surface-shadow-soft)]'
+          : 'text-foreground hover:bg-accent/35 hover:text-accent-foreground'
       )}
     >
       {isEditing ? (
@@ -156,7 +156,7 @@ function ConversationItem({
               }
             }}
             autoFocus
-            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary/40"
+            className="w-full rounded-xl border border-border bg-background/90 px-2.5 py-2 text-sm text-foreground outline-none focus:border-primary/40"
           />
           <div className="flex flex-wrap gap-2">
             <button
@@ -189,7 +189,7 @@ function ConversationItem({
               event.stopPropagation();
               onStartRename();
             }}
-            className="rounded p-1 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
+            className="rounded-xl p-1.5 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
             aria-label={`Rename ${conversation.title}`}
             title="Rename conversation"
           >
@@ -201,7 +201,7 @@ function ConversationItem({
               event.stopPropagation();
               onDelete();
             }}
-            className="rounded p-1 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
+            className="rounded-xl p-1.5 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
             aria-label={`Delete ${conversation.title}`}
             title="Delete conversation"
           >

@@ -255,6 +255,10 @@ impl MemoryService {
             "audio/mpeg" => "mp3".to_string(),
             "audio/mp4" => "m4a".to_string(),
             "audio/webm" => "webm".to_string(),
+            "text/plain" => "txt".to_string(),
+            "text/markdown" => "md".to_string(),
+            "text/csv" => "csv".to_string(),
+            "application/json" => "json".to_string(),
             _ => "bin".to_string(),
         }
     }
@@ -513,6 +517,7 @@ impl MemoryService {
         filename: &str,
         kind: &str,
         mime_type: Option<&str>,
+        extracted_text: Option<&str>,
         bytes: &[u8],
     ) -> Result<MessageAttachment, String> {
         self.ensure_safe_conversation_id(conversation_id)?;
@@ -544,6 +549,7 @@ impl MemoryService {
             path: stored_path.to_string_lossy().to_string(),
             mime_type: mime_type.map(|value| value.to_string()),
             size_bytes: Some(bytes.len() as u64),
+            extracted_text: extracted_text.map(|value| value.to_string()),
         })
     }
 
@@ -593,4 +599,3 @@ fn slugify(value: &str) -> String {
 
     slug.trim_matches('-').to_string()
 }
-

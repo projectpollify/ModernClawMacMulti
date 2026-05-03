@@ -1,5 +1,6 @@
 import { ModelCard } from './ModelCard';
 import { ModelDownloader } from './ModelDownloader';
+import { Button } from '@/components/ui/Button';
 import { APP_DISPLAY_NAME, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
 import { useModelStore } from '@/stores/modelStore';
 
@@ -23,12 +24,9 @@ export function ModelList() {
                 : 'Choose the active model, download new ones, and prune what you do not need.'}
             </p>
           </div>
-          <button
-            onClick={() => void refresh()}
-            className="rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <Button variant="outline" size="sm" onClick={() => void refresh()}>
             Refresh
-          </button>
+          </Button>
         </div>
 
         {!engineStatus?.running ? (

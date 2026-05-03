@@ -173,6 +173,18 @@ pub async fn agent_update_default_model(
 }
 
 #[tauri::command]
+pub async fn agent_rename(
+    db_state: State<'_, DatabaseState>,
+    memory_state: State<'_, MemoryState>,
+    agent_id: String,
+    name: String,
+) -> Result<(), String> {
+    let repo = AgentRepository::new(&db_state.db);
+    repo.ensure_base_profiles(&memory_state.root_path)?;
+    repo.update_name(&agent_id, &name)
+}
+
+#[tauri::command]
 pub async fn agent_update_voice_settings(
     db_state: State<'_, DatabaseState>,
     memory_state: State<'_, MemoryState>,

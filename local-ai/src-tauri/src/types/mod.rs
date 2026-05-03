@@ -141,6 +141,8 @@ pub struct MessageAttachment {
     pub path: String,
     pub mime_type: Option<String>,
     pub size_bytes: Option<u64>,
+    #[serde(default)]
+    pub extracted_text: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -84,10 +84,10 @@ export function ModelSelector() {
         }}
         disabled={isSwitchingModel}
         className={cn(
-          'inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/70 px-4 text-sm transition-colors',
+          'inline-flex h-11 items-center gap-2 rounded-full border border-border/80 bg-[hsl(var(--panel-strong))] px-4 text-sm shadow-[var(--surface-shadow-soft)] transition-all duration-150',
           isSwitchingModel
             ? 'cursor-wait opacity-80'
-            : 'hover:bg-accent hover:text-accent-foreground'
+            : 'hover:border-primary/20 hover:bg-accent/35 hover:text-accent-foreground'
         )}
       >
         {isSwitchingModel ? <SpinnerIcon className="h-3.5 w-3.5 text-primary" /> : <span className="h-2 w-2 rounded-full bg-green-500" />}
@@ -100,9 +100,9 @@ export function ModelSelector() {
       </button>
 
       {isOpen ? (
-        <div className="absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
-          <div className="border-b border-border px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="absolute left-1/2 top-full z-50 mt-3 w-80 -translate-x-1/2 overflow-hidden rounded-[1.6rem] border border-border/80 bg-[hsl(var(--panel-strong))] shadow-[var(--surface-shadow)] backdrop-blur-[22px]">
+          <div className="border-b border-border/60 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Installed Models
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -127,7 +127,7 @@ export function ModelSelector() {
                   className={cn(
                     'flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors',
                     isSwitchingModel ? 'cursor-wait opacity-60' : 'hover:bg-accent hover:text-accent-foreground',
-                    model.name === currentModel && 'bg-accent text-accent-foreground'
+                    model.name === currentModel && 'bg-accent/45 text-accent-foreground'
                   )}
                 >
                   <span className="flex-1 truncate">{getModelDisplayName(model.name)}</span>

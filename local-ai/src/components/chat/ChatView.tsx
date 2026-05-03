@@ -25,7 +25,7 @@ export function ChatView() {
     <div className="flex h-full flex-col">
       <SetupAttentionBanner />
       <ErrorBanner />
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-4 pt-5">
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
@@ -33,7 +33,7 @@ export function ChatView() {
         )}
       </div>
 
-      <div className="border-t border-border bg-background/90 p-4 backdrop-blur">
+      <div className="border-t border-border/60 bg-[hsl(var(--panel))] px-5 py-4 backdrop-blur-[18px]">
         <MessageInput />
       </div>
     </div>

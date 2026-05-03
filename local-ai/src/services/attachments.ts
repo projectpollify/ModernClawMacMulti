@@ -4,9 +4,10 @@ import type { MessageAttachment } from '@/types';
 interface StoreAttachmentInput {
   conversationId: string;
   filename: string;
-  kind: 'image' | 'audio';
+  kind: 'image' | 'audio' | 'document';
   mimeType?: string;
   bytes: Uint8Array;
+  extractedText?: string;
 }
 
 export const attachmentApi = {
@@ -16,6 +17,7 @@ export const attachmentApi = {
       filename: input.filename,
       kind: input.kind,
       mimeType: input.mimeType ?? null,
+      extractedText: input.extractedText ?? null,
       bytes: Array.from(input.bytes),
     });
   },

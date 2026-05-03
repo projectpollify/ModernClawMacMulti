@@ -14,10 +14,13 @@ export function SetupAttentionBanner() {
   const attentionItems = requiredItems.filter((item) => item.state === 'attention');
 
   return (
-    <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-3">
+    <div className="border-b border-amber-500/20 bg-amber-500/10 px-5 py-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700 dark:text-amber-100">
+            Setup Attention
+          </p>
+          <p className="mt-1 text-sm font-medium text-amber-800 dark:text-amber-200">
             Setup still needs attention before {APP_DISPLAY_NAME} is fully ready.
           </p>
           <p className="mt-1 text-sm text-amber-700/90 dark:text-amber-100/90">
