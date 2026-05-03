@@ -5,9 +5,11 @@ import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { SetupAttentionBanner } from './SetupAttentionBanner';
 import { useChatStore } from '@/stores/chatStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export function ChatView() {
   const { messages, isLoading, streamingContent } = useChatStore();
+  const chatTextScale = useSettingsStore((state) => state.settings.chatTextScale);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,7 +27,13 @@ export function ChatView() {
     <div className="flex h-full flex-col">
       <SetupAttentionBanner />
       <ErrorBanner />
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-4 pt-5">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-4 pb-4 pt-5"
+        style={{
+          zoom: chatTextScale,
+        }}
+      >
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
@@ -33,7 +41,12 @@ export function ChatView() {
         )}
       </div>
 
-      <div className="border-t border-border/60 bg-[hsl(var(--panel))] px-5 py-4 backdrop-blur-[18px]">
+      <div
+        className="border-t border-border/60 bg-[hsl(var(--panel))] px-5 py-4 backdrop-blur-[18px]"
+        style={{
+          zoom: chatTextScale,
+        }}
+      >
         <MessageInput />
       </div>
     </div>

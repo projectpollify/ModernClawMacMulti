@@ -144,10 +144,6 @@ impl<'a> AgentRepository<'a> {
     }
 
     pub fn update_default_model(&self, agent_id: &str, default_model: Option<&str>) -> Result<(), String> {
-        if !is_builtin_profile_id(agent_id) {
-            return Err("Only built-in base profiles can be updated in this version.".to_string());
-        }
-
         if self.get(agent_id)?.is_none() {
             return Err(format!("Agent not found: {}", agent_id));
         }
@@ -220,10 +216,6 @@ impl<'a> AgentRepository<'a> {
         whisper_model_path: Option<&str>,
         whisper_language: Option<&str>,
     ) -> Result<(), String> {
-        if !is_builtin_profile_id(agent_id) {
-            return Err("Only built-in base profiles can be updated in this version.".to_string());
-        }
-
         if self.get(agent_id)?.is_none() {
             return Err(format!("Agent not found: {}", agent_id));
         }

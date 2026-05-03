@@ -20,6 +20,12 @@ import { memoryApi } from '@/services/memory';
 import type { AgentVoiceSettings, MessageFeedbackSummary, Theme } from '@/types';
 
 const CONTEXT_WINDOW_OPTIONS = [2048, 4096, 8192, 16384, 32768, 65536, 131072];
+const CHAT_TEXT_SCALE_OPTIONS = [
+  { value: 0.9, label: 'Smaller' },
+  { value: 1, label: 'Default' },
+  { value: 1.1, label: 'Larger' },
+  { value: 1.25, label: 'Extra Large' },
+];
 const WHISPER_LANGUAGE_OPTIONS = [
   { value: 'auto', label: 'Auto detect' },
   { value: 'en', label: 'English' },
@@ -344,6 +350,23 @@ export function SettingsView() {
             </SettingsSection>
 
             <SettingsSection title="Behavior">
+              <SettingRow
+                label="Chat Text Size"
+                description="Make the chat window and composer easier to read if you want slightly smaller or larger text."
+              >
+                <select
+                  value={settings.chatTextScale}
+                  onChange={(event) => void updateSetting('chatTextScale', Number(event.target.value))}
+                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  {CHAT_TEXT_SCALE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </SettingRow>
+
               <SettingRow
                 label="Stream Responses"
                 description="Show the assistant response token-by-token while it is generating."

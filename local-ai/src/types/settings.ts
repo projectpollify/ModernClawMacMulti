@@ -4,6 +4,7 @@ import type { Theme } from '@/types';
 export interface AppSettings {
   theme: Theme;
   defaultModel: string | null;
+  chatTextScale: number;
   contextWindowSize: number;
   directEngineExecutablePath: string;
   directEngineModelPath: string;
@@ -35,6 +36,7 @@ export function normalizeDefaultModel(model: string | null | undefined) {
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   defaultModel: DEFAULT_FLOOR_MODEL,
+  chatTextScale: 1,
   contextWindowSize: 4096,
   directEngineExecutablePath: '',
   directEngineModelPath: '',
