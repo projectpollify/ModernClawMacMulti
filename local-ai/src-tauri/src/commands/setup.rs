@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 #[cfg(target_os = "macos")]
 use std::sync::OnceLock;
@@ -10,16 +11,18 @@ use tauri::State;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-use crate::DatabaseState;
 #[cfg(target_os = "macos")]
 use crate::services::database::Database;
 #[cfg(target_os = "macos")]
-use crate::services::llama_cpp::LlamaCppService;
-#[cfg(target_os = "macos")]
 use crate::services::llama_cpp::resolve_local_model_path;
+#[cfg(target_os = "macos")]
+use crate::services::llama_cpp::LlamaCppService;
+use crate::DatabaseState;
 
 #[cfg(target_os = "macos")]
 static DIRECT_ENGINE_START_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+#[cfg(target_os = "macos")]
+const GEMMA_4_CONTEXT_WINDOW_SIZE: usize = 125_000;
 
 #[tauri::command]
 pub async fn setup_open_external(target: String) -> Result<(), String> {
@@ -64,7 +67,12 @@ pub async fn setup_start_engine() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     let mut command = {
         let mut command = Command::new("cmd");
-        command.arg("/C").arg("start").arg("").arg("ollama").arg("serve");
+        command
+            .arg("/C")
+            .arg("start")
+            .arg("")
+            .arg("ollama")
+            .arg("serve");
         command
     };
 
@@ -119,12 +127,22 @@ pub async fn setup_switch_direct_engine_model(
         )
     })?;
 
-    state
-        .db
-        .set_setting("directEngineModelPath", &serde_json::to_string(&model_path).map_err(|error| error.to_string())?)?;
-    state
-        .db
-        .set_setting("defaultModel", &serde_json::to_string(trimmed_name).map_err(|error| error.to_string())?)?;
+    state.db.set_setting(
+        "directEngineModelPath",
+        &serde_json::to_string(&model_path).map_err(|error| error.to_string())?,
+    )?;
+    state.db.set_setting(
+        "defaultModel",
+        &serde_json::to_string(trimmed_name).map_err(|error| error.to_string())?,
+    )?;
+
+    if DirectEngineProfile::from_model_path(&model_path).is_gemma_4() {
+        state.db.set_setting(
+            "contextWindowSize",
+            &serde_json::to_string(&GEMMA_4_CONTEXT_WINDOW_SIZE)
+                .map_err(|error| error.to_string())?,
+        )?;
+    }
 
     stop_llama_server();
     sleep(Duration::from_millis(500)).await;
@@ -139,16 +157,14 @@ fn read_string_setting(db: &Database, key: &str) -> Result<Option<String>, Strin
     let value = db.get_setting(key)?;
 
     Ok(value.and_then(|raw| {
-        serde_json::from_str::<String>(&raw)
-            .ok()
-            .or_else(|| {
-                let trimmed = raw.trim().to_string();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(trimmed)
-                }
-            })
+        serde_json::from_str::<String>(&raw).ok().or_else(|| {
+            let trimmed = raw.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
     }))
 }
 
@@ -193,6 +209,7 @@ fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String>
 fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     let configured_executable = read_string_setting(db, "directEngineExecutablePath")?;
     let executable = resolve_llama_server_path(configured_executable.as_deref())?;
+    let profile = DirectEngineProfile::from_model_path(model_path);
     let context_window_size = read_usize_setting(db, "contextWindowSize")?
         .unwrap_or(4096)
         .max(512);
@@ -207,7 +224,7 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     let mut command = Command::new(&executable);
     command.arg("-m").arg(model_path);
 
-    if let Some(alias) = infer_model_alias(model_path) {
+    if let Some(alias) = profile.alias() {
         command.arg("--alias").arg(alias);
     }
 
@@ -218,8 +235,33 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
         .arg("1")
         .arg("--cache-ram")
         .arg("0")
-        .arg("--no-mmproj")
-        .arg("--no-warmup")
+        .arg("--no-warmup");
+
+    match profile {
+        DirectEngineProfile::Gemma4E2B => {
+            command.arg("--no-mmproj").arg("--reasoning").arg("off");
+        }
+        DirectEngineProfile::Gemma4E4B => {
+            let mmproj_path = resolve_mmproj_path(model_path).ok_or_else(|| {
+                format!(
+                    "Gemma 4 E4B is the full-feature lane, but no matching mmproj file was found next to {}. Install the Gemma 4 E4B mmproj GGUF, then try again.",
+                    model_path
+                )
+            })?;
+            command
+                .arg("--mmproj")
+                .arg(mmproj_path)
+                .arg("--reasoning")
+                .arg("on")
+                .arg("--reasoning-budget")
+                .arg("512");
+        }
+        DirectEngineProfile::Other => {
+            command.arg("--no-mmproj");
+        }
+    }
+
+    command
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--port")
@@ -242,8 +284,9 @@ pub async fn ensure_direct_engine_running(db: &Database) -> Result<(), String> {
         return Ok(());
     }
 
-    let Some(model_path) = read_string_setting(db, "directEngineModelPath")?
-        .filter(|value| !value.trim().is_empty()) else {
+    let Some(model_path) =
+        read_string_setting(db, "directEngineModelPath")?.filter(|value| !value.trim().is_empty())
+    else {
         return Ok(());
     };
 
@@ -284,17 +327,93 @@ async fn wait_for_direct_engine() -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-fn infer_model_alias(model_path: &str) -> Option<&'static str> {
-    let lower = Path::new(model_path)
+enum DirectEngineProfile {
+    Gemma4E2B,
+    Gemma4E4B,
+    Other,
+}
+
+#[cfg(target_os = "macos")]
+impl DirectEngineProfile {
+    fn from_model_path(model_path: &str) -> Self {
+        let Some(lower) = Path::new(model_path)
+            .file_name()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+        else {
+            return Self::Other;
+        };
+
+        if lower.contains("gemma-4-e4b") {
+            Self::Gemma4E4B
+        } else if lower.contains("gemma-4-e2b") {
+            Self::Gemma4E2B
+        } else {
+            Self::Other
+        }
+    }
+
+    fn alias(&self) -> Option<&'static str> {
+        match self {
+            Self::Gemma4E2B => Some("google/gemma-4-e2b"),
+            Self::Gemma4E4B => Some("google/gemma-4-e4b"),
+            Self::Other => None,
+        }
+    }
+
+    fn is_gemma_4(&self) -> bool {
+        matches!(self, Self::Gemma4E2B | Self::Gemma4E4B)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_mmproj_path(model_path: &str) -> Option<PathBuf> {
+    let model_path = Path::new(model_path);
+    let model_file = model_path
         .file_name()
         .and_then(|value| value.to_str())
         .map(|value| value.to_ascii_lowercase())?;
-
-    if lower.contains("gemma-4-e4b") {
-        Some("google/gemma-4-e4b")
-    } else if lower.contains("gemma-4-e2b") {
-        Some("google/gemma-4-e2b")
+    let model_dir = model_path.parent()?;
+    let model_lane = if model_file.contains("gemma-4-e4b") {
+        Some("gemma-4-e4b")
+    } else if model_file.contains("gemma-4-e2b") {
+        Some("gemma-4-e2b")
     } else {
         None
+    }?;
+
+    find_mmproj_in_dir(model_dir, model_lane)
+}
+
+#[cfg(target_os = "macos")]
+fn find_mmproj_in_dir(dir: &Path, model_lane: &str) -> Option<PathBuf> {
+    let entries = fs::read_dir(dir).ok()?;
+    let mut fallback = None;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            continue;
+        }
+
+        let Some(file_name) = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+        else {
+            continue;
+        };
+
+        if !file_name.ends_with(".gguf") || !file_name.starts_with("mmproj") {
+            continue;
+        }
+
+        fallback.get_or_insert_with(|| path.clone());
+
+        if file_name.contains(model_lane) {
+            return Some(path);
+        }
     }
+
+    fallback
 }
