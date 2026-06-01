@@ -207,10 +207,6 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     let mut command = Command::new(&executable);
     command.arg("-m").arg(model_path);
 
-    if let Some(mmproj_path) = infer_mmproj_path(model_path) {
-        command.arg("--mmproj").arg(mmproj_path);
-    }
-
     if let Some(alias) = infer_model_alias(model_path) {
         command.arg("--alias").arg(alias);
     }
@@ -218,6 +214,12 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
     command
         .arg("--ctx-size")
         .arg(context_window_size.to_string())
+        .arg("--parallel")
+        .arg("1")
+        .arg("--cache-ram")
+        .arg("0")
+        .arg("--no-mmproj")
+        .arg("--no-warmup")
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--port")
@@ -279,23 +281,6 @@ async fn wait_for_direct_engine() -> Result<(), String> {
     }
 
     Err("The direct engine did not come back online after switching models. Give it a moment and try again.".to_string())
-}
-
-#[cfg(target_os = "macos")]
-fn infer_mmproj_path(model_path: &str) -> Option<String> {
-    let model = Path::new(model_path);
-    let parent = model.parent()?;
-    let mut entries = std::fs::read_dir(parent).ok()?;
-
-    while let Some(Ok(entry)) = entries.next() {
-        let path = entry.path();
-        let file_name = path.file_name()?.to_str()?.to_ascii_lowercase();
-        if file_name.ends_with(".gguf") && file_name.starts_with("mmproj-") {
-            return Some(path.to_string_lossy().to_string());
-        }
-    }
-
-    None
 }
 
 #[cfg(target_os = "macos")]

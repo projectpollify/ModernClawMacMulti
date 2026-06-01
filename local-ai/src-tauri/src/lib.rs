@@ -31,6 +31,8 @@ use services::agent_repo::AgentRepository;
 use services::database::Database;
 use services::memory::MemoryService;
 use services::provider::ProviderService;
+use tauri::menu::MenuBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
@@ -63,6 +65,50 @@ fn default_memory_path(app: &tauri::App) -> Result<PathBuf, String> {
     };
 
     Ok(parent.join(folder_name))
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
+    let open_item_id = "open";
+    let quit_item_id = "quit";
+    let menu = MenuBuilder::new(app)
+        .text(open_item_id, "Open ModernClaw")
+        .separator()
+        .text(quit_item_id, "Quit")
+        .build()?;
+
+    let app_handle = app.handle().clone();
+    TrayIconBuilder::with_id("main")
+        .icon(app.default_window_icon().cloned().unwrap())
+        .icon_as_template(true)
+        .tooltip("ModernClaw")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(move |tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        })
+        .on_menu_event(move |app, event| match event.id().as_ref() {
+            id if id == open_item_id => show_main_window(app),
+            id if id == quit_item_id => app.exit(0),
+            _ => {}
+        })
+        .build(&app_handle)?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -100,7 +146,16 @@ pub fn run() {
 
             app.manage(db_state);
             app.manage(memory_state);
+            setup_tray(app)?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![

@@ -338,8 +338,6 @@ fn infer_family(lower_name: &str) -> Option<String> {
         Some("gemma".to_string())
     } else if lower_name.contains("llama") {
         Some("llama".to_string())
-    } else if lower_name.contains("qwen") {
-        Some("qwen".to_string())
     } else if lower_name.contains("mistral") {
         Some("mistral".to_string())
     } else {
