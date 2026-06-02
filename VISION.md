@@ -16,7 +16,7 @@ This document captures the full product vision — not just the app, but the com
 
 ### 1. ModernClaw — The Workspace
 
-The core desktop app. Built with Tauri (Rust + React). Runs on Mac and Windows.
+The core desktop app. Built with Tauri (Rust + React). macOS-first; Windows is a possible future platform, not part of the launch product.
 
 **What it does:**
 - Local chat powered by a direct engine (llama.cpp / llama-server)
@@ -128,18 +128,30 @@ Self-Improvement Loop
 
 ## Tiering
 
-**Free / Open Source:**
-- ModernClaw base app
-- Local workspace, memory, chat, voice
+**Paid Product (One-Time Purchase, You Own It):**
+- ModernClawMacMulti — the full macOS desktop app
+- Multi-brain workspace with three complexity modes (Simplified / Custom / Complete)
+- Direct llama.cpp engine, self-managed
+- Both Gemma 4 lanes (Everyday chat + Advanced help)
+- Local workspace, memory, chat, voice (Piper + Whisper)
+- Image and audio attachments
 - Joe Support built in
-- One model lane
+- Local tool layer
 
-**Paid:**
-- Curator access
+**Optional Subscription (Ongoing Add-On Stream):**
+- Curator integration in-app
 - Rosie verification layer
-- Enterprise agent brain delivery
+- Expert brain packs (customer support, marketing, founder, etc.)
+- Premium voice packs
 - Karpathy self-improvement loop
 - Advanced automation and scheduling
+- Enterprise / team layers (future)
+
+The version a user buys stays theirs forever. The subscription is for new content released after their purchase — never to keep the original app working.
+
+**Legacy Open-Source Anchor:**
+- An older minimal version of ModernClaw remains public on GitHub as the credibility signal for the local-first, privacy-respecting ethos
+- Not feature-parity with the paid product; it is a trust anchor, not a competitor to the paid app
 
 ---
 
@@ -162,7 +174,7 @@ Self-Improvement Loop
 
 ## Where We Are Now
 
-- ModernClaw Mac and Windows installers are in final development
+- ModernClawMacMulti macOS installer is in final development
 - Engine naming has been cleaned up — Ollama references removed, direct engine naming consistent throughout
 - The Curator is operational as a Cowork agent
 - Rosie does not yet exist
@@ -173,7 +185,7 @@ Self-Improvement Loop
 
 ## Next Milestones
 
-1. Ship Mac and Windows installers
+1. Ship the macOS installer
 2. Cowork joins the pipeline formally
 3. Design and build Rosie
 4. Wire Rosie into the Curator → User approval flow
