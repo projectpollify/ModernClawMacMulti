@@ -39,7 +39,8 @@
       "appimage"
     ],
     "resources": {
-      "binaries/llama-cpp/*": "llama-cpp/"
+      "binaries/llama-cpp/*": "llama-cpp/",
+      "binaries/gemma-4-e4b/*": "gemma-4-e4b/"
     },
     "icon": [
       "icons/32x32.png",

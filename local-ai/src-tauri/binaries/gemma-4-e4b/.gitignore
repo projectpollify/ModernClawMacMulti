@@ -1,0 +1,6 @@
+# Ignore the actual model weights — they're fetched, not authored.
+# Keep this .gitignore and the README tracked so the directory and the Tauri
+# bundle.resources glob always have at least one file to match.
+*
+!.gitignore
+!README.md

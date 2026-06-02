@@ -1,6 +1,8 @@
 # Ignore the bundled binaries themselves — they're fetched, not authored.
-# Keep the README, this .gitignore, and the llama-cpp/ subdir (with its own .gitignore) tracked.
+# Keep the README, this .gitignore, and the lane subdirs (each with their own
+# .gitignore) tracked.
 *
 !.gitignore
 !README.md
 !llama-cpp/
+!gemma-4-e4b/

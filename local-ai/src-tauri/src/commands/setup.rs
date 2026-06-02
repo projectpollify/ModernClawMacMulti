@@ -107,6 +107,7 @@ pub async fn setup_start_engine(
 ) -> Result<(), String> {
     let model_path = read_string_setting(&state.db, "directEngineModelPath")?
         .filter(|value| !value.trim().is_empty())
+        .or_else(|| resolve_bundled_model_path(&app))
         .ok_or_else(|| {
             "No GGUF model path is configured yet. Add it in Settings under llama-server Executable / GGUF Model Path, then try Start Engine again.".to_string()
         })?;
@@ -183,6 +184,19 @@ fn read_usize_setting(db: &Database, key: &str) -> Result<Option<usize>, String>
             .ok()
             .or_else(|| raw.trim().parse::<usize>().ok())
     }))
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_bundled_model_path(app: &AppHandle) -> Option<String> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let model_path = resource_dir
+        .join("gemma-4-e4b")
+        .join("gemma-4-E4B-it-Q4_K_M.gguf");
+    if model_path.exists() {
+        Some(model_path.to_string_lossy().into_owned())
+    } else {
+        None
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -310,8 +324,9 @@ pub async fn ensure_direct_engine_running(
         return Ok(());
     }
 
-    let Some(model_path) =
-        read_string_setting(db, "directEngineModelPath")?.filter(|value| !value.trim().is_empty())
+    let Some(model_path) = read_string_setting(db, "directEngineModelPath")?
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| resolve_bundled_model_path(app))
     else {
         return Ok(());
     };
