@@ -26,7 +26,9 @@ use commands::memory::{
     memory_store_chat_attachment, memory_write_file, MemoryState,
 };
 use commands::settings::{setting_get, setting_set, settings_get_all, settings_reset};
-use commands::setup::{setup_open_external, setup_start_engine, setup_switch_direct_engine_model};
+use commands::setup::{
+    setup_open_external, setup_start_engine, setup_switch_direct_engine_model, stop_engine_on_exit,
+};
 use commands::voice::{
     voice_check_input_status, voice_check_status, voice_speak, voice_transcribe,
 };
@@ -216,6 +218,16 @@ pub fn run() {
             voice_speak,
             voice_transcribe
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // The bundled llama-server is a child process we spawned via
+                // std::process::Command::spawn(), which means it survives the
+                // Tauri app exiting unless we explicitly kill it. Without this
+                // hook the engine becomes orphaned on every quit, holding port
+                // 8080 and several GB of RAM until the user notices.
+                stop_engine_on_exit();
+            }
+        });
 }

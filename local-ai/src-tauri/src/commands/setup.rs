@@ -24,7 +24,35 @@ use crate::DatabaseState;
 #[cfg(target_os = "macos")]
 static DIRECT_ENGINE_START_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 #[cfg(target_os = "macos")]
+static DIRECT_ENGINE_PID: OnceLock<std::sync::Mutex<Option<u32>>> = OnceLock::new();
+#[cfg(target_os = "macos")]
 const GEMMA_4_CONTEXT_WINDOW_SIZE: usize = 125_000;
+
+#[cfg(target_os = "macos")]
+fn engine_pid_slot() -> &'static std::sync::Mutex<Option<u32>> {
+    DIRECT_ENGINE_PID.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+#[cfg(target_os = "macos")]
+fn record_engine_pid(pid: u32) {
+    if let Ok(mut guard) = engine_pid_slot().lock() {
+        *guard = Some(pid);
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn take_engine_pid() -> Option<u32> {
+    engine_pid_slot().lock().ok().and_then(|mut guard| guard.take())
+}
+
+/// Called from the Tauri app exit hook so the bundled llama-server child
+/// is shut down with the app. Without this the engine becomes orphaned
+/// (re-parented to launchd) and keeps holding port 8080 + several GB of RAM
+/// after every quit.
+pub fn stop_engine_on_exit() {
+    #[cfg(target_os = "macos")]
+    stop_llama_server();
+}
 
 #[tauri::command]
 pub async fn setup_open_external(target: String) -> Result<(), String> {
@@ -298,7 +326,7 @@ fn start_llama_server(
         }
     }
 
-    command
+    let child = command
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--port")
@@ -307,6 +335,11 @@ fn start_llama_server(
         .stderr(Stdio::null())
         .spawn()
         .map_err(|error| format!("Failed to start llama.cpp server: {}", error))?;
+
+    // Remember the PID so the app exit hook can shut it down cleanly.
+    // std::process::Child does NOT kill on drop, so letting the handle
+    // fall out of scope here is safe — the engine keeps running.
+    record_engine_pid(child.id());
 
     Ok(())
 }
@@ -337,12 +370,16 @@ pub async fn ensure_direct_engine_running(
 
 #[cfg(target_os = "macos")]
 fn stop_llama_server() {
-    let _ = Command::new("pkill")
-        .arg("-f")
-        .arg("llama-server")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    // Only kill the llama-server *we* spawned. The previous pkill -f approach
+    // would also terminate any other llama-server the user might be running
+    // (LM Studio, manual dev runs, etc.) which is unfriendly.
+    if let Some(pid) = take_engine_pid() {
+        let _ = Command::new("kill")
+            .arg(pid.to_string())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
 }
 
 #[cfg(target_os = "macos")]
