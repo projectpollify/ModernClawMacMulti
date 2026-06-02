@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildSetupChecklist } from '@/lib/setupStatus';
 import { useMemoryStore } from '@/stores/memoryStore';
 import { useModelStore } from '@/stores/modelStore';
@@ -32,6 +32,7 @@ export function useSetupStatus() {
   const checkInputStatus = useVoiceStore((state) => state.checkInputStatus);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasRefetchedOnEngineReady = useRef(false);
 
   const runRefresh = async () => {
     setIsRefreshing(true);
@@ -65,6 +66,28 @@ export function useSetupStatus() {
     engineStatus,
     outputStatus,
   ]);
+
+  // Re-fetch the model list once the engine finishes its (sometimes slow) cold
+  // start. The initial setup check can complete while the engine is still
+  // loading and record an empty model list. The effect above stops refreshing
+  // once `engineStatus` is merely *present* (running or not), so without this
+  // the list would never repopulate after the engine actually comes up —
+  // leaving "Model Installed" stuck on missing, and chat gated, even though a
+  // model is being served. The ref guard ensures we retry exactly once per
+  // engine-ready transition, so an engine that genuinely has no models can't
+  // trigger a refresh loop.
+  useEffect(() => {
+    if (!engineStatus?.running) {
+      // Engine isn't up (or went away): arm a fresh refetch for when it returns.
+      hasRefetchedOnEngineReady.current = false;
+      return;
+    }
+
+    if (models.length === 0 && !isRefreshing && !hasRefetchedOnEngineReady.current) {
+      hasRefetchedOnEngineReady.current = true;
+      void refreshModels();
+    }
+  }, [engineStatus, models.length, isRefreshing, refreshModels]);
 
   const checklist = useMemo(
     () =>
