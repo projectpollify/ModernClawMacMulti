@@ -45,6 +45,69 @@ fn take_engine_pid() -> Option<u32> {
     engine_pid_slot().lock().ok().and_then(|mut guard| guard.take())
 }
 
+#[cfg(target_os = "macos")]
+fn engine_pid_is_tracked() -> bool {
+    engine_pid_slot()
+        .lock()
+        .map(|guard| guard.is_some())
+        .unwrap_or(false)
+}
+
+/// Return the PID of whatever process is *listening* on port 8080, if any.
+#[cfg(target_os = "macos")]
+fn pid_listening_on_8080() -> Option<u32> {
+    let output = Command::new("lsof")
+        .args(["-nP", "-iTCP:8080", "-sTCP:LISTEN", "-t"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8_lossy(&output.stdout)
+        .split_whitespace()
+        .next()
+        .and_then(|pid| pid.trim().parse::<u32>().ok())
+}
+
+/// Decide whether the process at `pid` is an engine *we* are responsible for.
+///
+/// Our engine is the bundled `llama-server` that lives inside our `.app`, or one
+/// we launched against our bundled model — both reference our app bundle's
+/// `Contents/Resources/` directory on their command line. A user's own
+/// `llama-server` (LM Studio, a manual dev run) never will, so this is a safe
+/// way to avoid killing a server that isn't ours.
+#[cfg(target_os = "macos")]
+fn pid_is_our_engine(pid: u32) -> bool {
+    let output = match Command::new("ps")
+        .args(["-o", "command=", "-p", &pid.to_string()])
+        .output()
+    {
+        Ok(output) if output.status.success() => output,
+        _ => return false,
+    };
+    let command_line = String::from_utf8_lossy(&output.stdout);
+    command_line.contains("/Contents/Resources/llama-cpp/llama-server")
+        || command_line.contains("/Contents/Resources/gemma-4-e4b/")
+}
+
+/// Startup reclaim: if port 8080 is already serving when we launch, an engine
+/// from a previous session may have been orphaned (a crash, a force-quit, or a
+/// shutdown hook that never fired). If that orphan is *ours*, adopt its PID so
+/// we own its lifecycle again and shut it down cleanly on the next quit. This
+/// is the self-healing counterpart to `stop_llama_server` — it guarantees we
+/// recover from the termination paths no exit hook can ever intercept.
+#[cfg(target_os = "macos")]
+fn reclaim_orphaned_engine() {
+    if engine_pid_is_tracked() {
+        return; // We already own a running engine this session.
+    }
+    if let Some(pid) = pid_listening_on_8080() {
+        if pid_is_our_engine(pid) {
+            record_engine_pid(pid);
+        }
+    }
+}
+
 /// Called from the Tauri app exit hook so the bundled llama-server child
 /// is shut down with the app. Without this the engine becomes orphaned
 /// (re-parented to launchd) and keeps holding port 8080 + several GB of RAM
@@ -354,6 +417,10 @@ pub async fn ensure_direct_engine_running(
     let provider = LlamaCppService::new();
 
     if provider.check_status().await.running {
+        // Port 8080 is already serving. If it's an engine we orphaned in a
+        // previous session, adopt its PID so we can shut it down on quit
+        // instead of leaking it again. Foreign servers are left untouched.
+        reclaim_orphaned_engine();
         return Ok(());
     }
 
