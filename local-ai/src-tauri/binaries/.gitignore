@@ -1,0 +1,5 @@
+# Ignore the bundled binaries themselves — they're fetched, not authored.
+# Keep the README and this .gitignore tracked.
+*
+!.gitignore
+!README.md
