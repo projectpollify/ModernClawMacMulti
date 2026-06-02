@@ -159,9 +159,20 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window.hide();
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        // Red close button / Cmd-W: hide to tray, keep engine.
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    tauri::WindowEvent::Destroyed => {
+                        // Belt-and-suspenders: if the window is ever torn down for
+                        // real, kill the engine. The proven shutdown path on macOS
+                        // is RunEvent::Exit (see below); this is a harmless,
+                        // idempotent backstop for any teardown that skips it.
+                        stop_engine_on_exit();
+                    }
+                    _ => {}
                 }
             }
         })
@@ -221,13 +232,22 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                // The bundled llama-server is a child process we spawned via
-                // std::process::Command::spawn(), which means it survives the
-                // Tauri app exiting unless we explicitly kill it. Without this
-                // hook the engine becomes orphaned on every quit, holding port
-                // 8080 and several GB of RAM until the user notices.
-                stop_engine_on_exit();
+            // The bundled llama-server is a child process we spawned via
+            // std::process::Command::spawn(), which means it survives the
+            // Tauri app exiting unless we explicitly kill it.
+            //
+            // RunEvent::Exit is the proven shutdown hook on macOS: event logging
+            // confirmed it fires on the NSApplication.terminate() path (menu
+            // Quit / Cmd-Q / tray Quit), which is exactly the path that skips
+            // ExitRequested and WindowEvent::Destroyed. We still match
+            // ExitRequested too for non-terminate exits. `stop_engine_on_exit()`
+            // takes the tracked PID, so firing from multiple hooks is idempotent
+            // — extra calls are harmless no-ops.
+            match event {
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
+                    stop_engine_on_exit();
+                }
+                _ => {}
             }
         });
 }
