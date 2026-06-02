@@ -18,15 +18,18 @@ use commands::history::{
     conversation_search, conversation_update, message_create, message_feedback_summary,
     message_set_feedback, messages_get,
 };
+use commands::local_tools::local_tool_execute;
 use commands::memory::{
     memory_append_log, memory_get_base_path, memory_get_today_log, memory_import_curator_package,
     memory_initialize, memory_list_curator_staged, memory_list_daily_logs, memory_list_knowledge,
     memory_load_context, memory_open_folder, memory_read_file, memory_reject_curator_package,
     memory_store_chat_attachment, memory_write_file, MemoryState,
 };
-use commands::setup::{setup_open_external, setup_start_engine, setup_switch_direct_engine_model};
 use commands::settings::{setting_get, setting_set, settings_get_all, settings_reset};
-use commands::voice::{voice_check_input_status, voice_check_status, voice_speak, voice_transcribe};
+use commands::setup::{setup_open_external, setup_start_engine, setup_switch_direct_engine_model};
+use commands::voice::{
+    voice_check_input_status, voice_check_status, voice_speak, voice_transcribe,
+};
 use services::agent_repo::AgentRepository;
 use services::database::Database;
 use services::memory::MemoryService;
@@ -122,8 +125,9 @@ pub fn run() {
         .setup(|app| {
             let db_state = setup_database(app)
                 .map_err(|error| IoError::other(format!("Database setup failed: {}", error)))?;
-            let default_root_path = default_memory_path(app)
-                .map_err(|error| IoError::other(format!("Memory path resolution failed: {}", error)))?;
+            let default_root_path = default_memory_path(app).map_err(|error| {
+                IoError::other(format!("Memory path resolution failed: {}", error))
+            })?;
 
             let default_root_path_string = default_root_path.to_string_lossy().to_string();
             let agent_repo = AgentRepository::new(&db_state.db);
@@ -133,7 +137,9 @@ pub fn run() {
 
             let active_workspace_path = agent_repo
                 .resolve_active_workspace_path(&default_root_path_string)
-                .map_err(|error| IoError::other(format!("Active workspace resolution failed: {}", error)))?;
+                .map_err(|error| {
+                    IoError::other(format!("Active workspace resolution failed: {}", error))
+                })?;
 
             let memory_service = MemoryService::new(&active_workspace_path);
             memory_service
@@ -183,6 +189,7 @@ pub fn run() {
             message_feedback_summary,
             message_set_feedback,
             messages_get,
+            local_tool_execute,
             memory_initialize,
             memory_read_file,
             memory_write_file,

@@ -1,3 +1,4 @@
+use crate::services::local_tools::LocalToolService;
 use crate::types::{ChatMessage, ContextStats, MemoryContext};
 
 fn estimate_tokens(text: &str) -> usize {
@@ -27,6 +28,7 @@ fn build_system_prompt(context: &MemoryContext) -> String {
             "Do not describe SOUL.md as an external file you merely read unless the user explicitly asks about prompt construction.",
             "Do not fall back to generic model self-descriptions like 'I am Gemma' or 'I am a language model from Google' unless the user explicitly asks about the underlying model runtime.",
             "When the brain persona gives you a name or role, answer consistently from that identity.",
+            LocalToolService::tool_instructions(),
         ]
         .join(" "),
     );
@@ -142,7 +144,9 @@ impl ContextBuilder {
             total_tokens,
             max_tokens: self.max_context_tokens,
             messages_included: included_history_count + 1,
-            messages_truncated: conversation_history.len().saturating_sub(included_history_count),
+            messages_truncated: conversation_history
+                .len()
+                .saturating_sub(included_history_count),
             usage_percent,
         };
 

@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { getModelDisplayName, IS_MAC_MODEL_PROVIDER, MODEL_PROVIDER_NAME } from '@/lib/providerConfig';
+import {
+  getModelCapabilityDetail,
+  getModelCapabilitySummary,
+  getModelDisplayName,
+  IS_MAC_MODEL_PROVIDER,
+  MODEL_PROVIDER_NAME,
+} from '@/lib/providerConfig';
 import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import { useAgentStore } from '@/stores/agentStore';
@@ -91,10 +97,17 @@ export function ModelSelector() {
         )}
       >
         {isSwitchingModel ? <SpinnerIcon className="h-3.5 w-3.5 text-primary" /> : <span className="h-2 w-2 rounded-full bg-green-500" />}
-        <span className="max-w-56 truncate">
-          {isSwitchingModel
-            ? `Switching to ${getModelDisplayName(pendingModelName) || 'model'}...`
-            : getModelDisplayName(currentModel) || 'Select Model'}
+        <span className="flex max-w-56 flex-col items-start leading-tight">
+          <span className="max-w-56 truncate">
+            {isSwitchingModel
+              ? `Switching to ${getModelDisplayName(pendingModelName) || 'model'}...`
+              : getModelDisplayName(currentModel) || 'Select Model'}
+          </span>
+          {!isSwitchingModel && currentModel ? (
+            <span className="max-w-56 truncate text-[11px] text-muted-foreground">
+              {getModelCapabilitySummary(currentModel)}
+            </span>
+          ) : null}
         </span>
         <ChevronIcon className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180', isSwitchingModel && 'opacity-40')} />
       </button>
@@ -130,15 +143,18 @@ export function ModelSelector() {
                     model.name === currentModel && 'bg-accent/45 text-accent-foreground'
                   )}
                 >
-                  <span className="flex-1 truncate">{getModelDisplayName(model.name)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{getModelDisplayName(model.name)}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {getModelCapabilityDetail(model.name)}
+                    </span>
+                  </span>
                   {isSwitchingModel && model.name === pendingModelName ? (
                     <span className="inline-flex items-center gap-1 text-xs text-primary">
                       <SpinnerIcon className="h-3 w-3" />
                       Switching
                     </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{formatSize(model.size)}</span>
-                  )}
+                  ) : null}
                 </button>
               ))
             ) : (
@@ -151,20 +167,6 @@ export function ModelSelector() {
       ) : null}
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (!bytes || bytes <= 0) {
-    return 'Loaded';
-  }
-
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) {
-    return `${gb.toFixed(1)}GB`;
-  }
-
-  const mb = bytes / (1024 * 1024);
-  return `${mb.toFixed(0)}MB`;
 }
 
 function ChevronIcon({ className }: { className?: string }) {

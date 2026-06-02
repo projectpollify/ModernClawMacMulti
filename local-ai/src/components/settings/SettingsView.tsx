@@ -389,7 +389,7 @@ export function SettingsView() {
 
               <SettingRow
                 label="Show Token Count"
-                description="Display approximate token usage on chat bubbles for quick prompt-budget visibility."
+                description="Display approximate reply length on chat bubbles."
               >
                 <Toggle
                   checked={settings.showTokenCount}
@@ -398,8 +398,8 @@ export function SettingsView() {
               </SettingRow>
 
               <SettingRow
-                label="Show Response Metrics"
-                description="Display context usage, tokens per second, output tokens, duration, and stop reason beneath assistant replies."
+                label="Show Reply Details"
+                description="Display simple timing and completion details beneath assistant replies."
               >
                 <Toggle
                   checked={settings.showResponseMetrics}

@@ -8,11 +8,12 @@ use super::memory::MemoryState;
 use super::setup::ensure_direct_engine_running;
 use crate::services::agent_repo::AgentRepository;
 use crate::services::context::ContextBuilder;
+use crate::services::local_tools::{
+    format_tool_result_for_model, parse_local_tool_call, LocalToolService,
+};
 use crate::services::memory::MemoryService;
 use crate::services::provider::ProviderService;
-use crate::types::{
-    BuildContextResponse, ChatMessage, ChatResponse, EngineStatus, Model,
-};
+use crate::types::{BuildContextResponse, ChatMessage, ChatResponse, EngineStatus, Model};
 use crate::DatabaseState;
 
 pub struct AppState {
@@ -69,17 +70,59 @@ pub async fn build_context(
 pub async fn chat_send(
     app: AppHandle,
     state: State<'_, AppState>,
+    db_state: State<'_, DatabaseState>,
+    memory_state: State<'_, MemoryState>,
     model: String,
     messages: Vec<ChatMessage>,
     conversationId: String,
 ) -> Result<(), String> {
     let provider = state.provider.lock().await;
+    let mut working_messages = messages;
 
-    provider
-        .chat_stream(&model, messages, |chunk: ChatResponse| {
-            let _ = app.emit(&format!("chat-chunk-{}", conversationId), &chunk);
-        })
-        .await
+    for _ in 0..3 {
+        let mut response: Option<ChatResponse> = None;
+
+        provider
+            .chat_stream(&model, working_messages.clone(), |chunk: ChatResponse| {
+                response = Some(chunk);
+            })
+            .await?;
+
+        let Some(chunk) = response else {
+            return Err("No response received from the local model.".to_string());
+        };
+
+        let content = chunk.message.content.trim().to_string();
+
+        if let Some(tool_call) = parse_local_tool_call(&content) {
+            let agent_repo = AgentRepository::new(&db_state.db);
+            let workspace_path =
+                agent_repo.resolve_active_workspace_path(&memory_state.root_path)?;
+            let memory_service = MemoryService::new(&workspace_path);
+            memory_service.initialize()?;
+
+            let tool_service = LocalToolService::new(&db_state.db, memory_service);
+            let tool_result = tool_service.execute(tool_call);
+
+            working_messages.push(ChatMessage {
+                role: "assistant".to_string(),
+                content,
+                images: Vec::new(),
+            });
+            working_messages.push(ChatMessage {
+                role: "system".to_string(),
+                content: format_tool_result_for_model(&tool_result),
+                images: Vec::new(),
+            });
+
+            continue;
+        }
+
+        let _ = app.emit(&format!("chat-chunk-{}", conversationId), &chunk);
+        return Ok(());
+    }
+
+    Err("The model kept requesting tools and did not produce a final answer.".to_string())
 }
 
 #[tauri::command]

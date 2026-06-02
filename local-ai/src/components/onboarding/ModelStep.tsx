@@ -69,8 +69,8 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
       title={IS_MAC_MODEL_PROVIDER ? 'Load a Model' : 'Choose a Model'}
       description={
         IS_MAC_MODEL_PROVIDER
-          ? `Start the ${MODEL_PROVIDER_NAME} local server, load a Gemma 4 model there, and ${APP_DISPLAY_NAME} will use that lane as the default Mac workspace engine.`
-          : 'Install a supported Gemma 4 model so ModernClaw starts from a strong default lane, with a lighter sibling available if you want a smaller local footprint.'
+          ? `Start the ${MODEL_PROVIDER_NAME} local server, then choose how ${APP_DISPLAY_NAME} should help you.`
+          : 'Choose the helper style you want to start with. You can change it later.'
       }
       onBack={onBack}
       onNext={onNext}
@@ -107,8 +107,7 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
                 onChange={(event) => setSelectedModel(event.target.value)}
                 className="sr-only"
               />
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div>
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{getModelDisplayName(model.name)}</p>
                     {model.recommended ? (
@@ -121,8 +120,6 @@ export function ModelStep({ onNext, onBack }: ModelStepProps) {
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{model.description}</p>
-                </div>
-                <span className="shrink-0 text-sm text-muted-foreground">{model.size}</span>
               </div>
             </label>
           ))}

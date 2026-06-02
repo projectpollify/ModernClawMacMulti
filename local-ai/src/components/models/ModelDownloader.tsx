@@ -19,8 +19,7 @@ export function ModelDownloader() {
     return (
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-          ModernClawMac reads whichever Gemma 4 GGUF models are available to the local direct engine. Start
-          `llama-server` on port 8080, then make one of the standard lanes below available and come back here to refresh.
+          ModernClawMac uses local helper modes that run on this computer. Choose the mode that fits what you are doing.
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -38,7 +37,7 @@ export function ModelDownloader() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
-        ModernClaw is currently tuned around the Gemma 4 family. Start with the primary lane for the strongest local quality, or use the lighter 2B sibling when you want a smaller supported option on the same track.
+        ModernClaw is tuned around simple local helper modes. Start with the one that matches what you need today.
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -55,7 +54,6 @@ export function ModelDownloader() {
             title={model.description}
           >
             <span className="font-medium">{getModelDisplayName(model.name)}</span>
-            <span className="ml-2 text-muted-foreground">{model.size}</span>
           </button>
         ))}
       </div>

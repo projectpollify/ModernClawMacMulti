@@ -33,30 +33,30 @@ export const CURATED_FLOOR_MODELS = IS_MAC_MODEL_PROVIDER
   ? ([
       {
         name: DEFAULT_FLOOR_MODEL,
-        size: 'Primary lane',
+        size: '',
         description:
-          'Primary Gemma 4 setup for ModernClawMac. Use this lane when you want the strongest local quality.',
+          'Advanced help for images, local tools, and harder tasks.',
         recommended: true,
       },
       {
         name: LIGHTWEIGHT_FLOOR_MODEL,
-        size: 'Lighter lane',
+        size: '',
         description:
-          'Smaller Gemma 4 lane for ModernClawMac when you want a lower-resource option with the same supported family.',
+          'Everyday chat for quick questions and learning.',
         recommended: false,
       },
     ] as const)
   : ([
       {
         name: DEFAULT_FLOOR_MODEL,
-        size: '9.6GB',
-        description: 'Primary Gemma 4 setup for ModernClaw. Use this lane for the strongest supported local workspace experience.',
+        size: '',
+        description: 'Advanced help for images, local tools, and harder tasks.',
         recommended: true,
       },
       {
         name: LIGHTWEIGHT_FLOOR_MODEL,
-        size: '7.2GB',
-        description: 'Smaller Gemma 4 lane for lighter local setups when you want lower resource use with the same supported family.',
+        size: '',
+        description: 'Everyday chat for quick questions and learning.',
         recommended: false,
       },
     ] as const);

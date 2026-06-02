@@ -16,6 +16,20 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'gemma4:e4b': 'Thinking',
 };
 
+const MODEL_CAPABILITY_SUMMARIES: Record<string, string> = {
+  'google/gemma-4-e2b': 'Everyday chat',
+  'google/gemma-4-e4b': 'Advanced help',
+  'gemma4:e2b': 'Everyday chat',
+  'gemma4:e4b': 'Advanced help',
+};
+
+const MODEL_CAPABILITY_DETAILS: Record<string, string> = {
+  'google/gemma-4-e2b': 'Quick responses for normal questions and learning.',
+  'google/gemma-4-e4b': 'Use this for images, local tools, and harder tasks.',
+  'gemma4:e2b': 'Quick responses for normal questions and learning.',
+  'gemma4:e4b': 'Use this for images, local tools, and harder tasks.',
+};
+
 export function isRecommendedModelName(name: string | null | undefined) {
   const normalized = name?.trim().toLowerCase();
   return Boolean(normalized && (normalized.includes('gemma4') || normalized.includes('gemma-4')));
@@ -27,6 +41,22 @@ export function getModelDisplayName(name: string | null | undefined) {
   }
 
   return MODEL_DISPLAY_NAMES[name] ?? name;
+}
+
+export function getModelCapabilitySummary(name: string | null | undefined) {
+  if (!name) {
+    return '';
+  }
+
+  return MODEL_CAPABILITY_SUMMARIES[name] ?? 'Local assistant';
+}
+
+export function getModelCapabilityDetail(name: string | null | undefined) {
+  if (!name) {
+    return '';
+  }
+
+  return MODEL_CAPABILITY_DETAILS[name] ?? 'Runs privately on this computer.';
 }
 
 export function resolvePreferredModelName(

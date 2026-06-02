@@ -1,12 +1,15 @@
-﻿import { useState } from 'react';
-import { getModelDisplayName, IS_MAC_MODEL_PROVIDER } from '@/lib/providerConfig';
+import {
+  getModelCapabilityDetail,
+  getModelCapabilitySummary,
+  getModelDisplayName,
+  IS_MAC_MODEL_PROVIDER,
+} from '@/lib/providerConfig';
 import { setupApi } from '@/services/setup';
 import { cn } from '@/lib/utils';
 import type { Model } from '@/services/engine';
 import { useAgentStore } from '@/stores/agentStore';
 import { useModelStore } from '@/stores/modelStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { ModelInfo } from './ModelInfo';
 
 interface ModelCardProps {
   model: Model;
@@ -19,7 +22,6 @@ export function ModelCard({ model }: ModelCardProps) {
   const checkStatus = useModelStore((state) => state.checkStatus);
   const updateActiveAgentDefaultModel = useAgentStore((state) => state.updateActiveAgentDefaultModel);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
-  const [showInfo, setShowInfo] = useState(false);
   const isActive = model.name === currentModel;
 
   const handleSelect = async () => {
@@ -45,12 +47,9 @@ export function ModelCard({ model }: ModelCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="truncate text-base font-semibold">{getModelDisplayName(model.name)}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {model.details.parameter_size || 'Unknown size'} -{' '}
-            {model.details.quantization_level || 'Unknown quantization'}
-          </p>
+          <p className="mt-1 text-sm text-foreground/80">{getModelCapabilitySummary(model.name)}</p>
+          <p className="mt-1 max-w-xl text-xs text-muted-foreground">{getModelCapabilityDetail(model.name)}</p>
         </div>
-        <span className="shrink-0 text-sm text-muted-foreground">{formatSize(model.size)}</span>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -65,13 +64,6 @@ export function ModelCard({ model }: ModelCardProps) {
           <span className="rounded-md px-3 py-1.5 text-sm text-green-600">Active</span>
         )}
 
-        <button
-          onClick={() => setShowInfo((value) => !value)}
-          className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          {showInfo ? 'Hide Info' : 'Info'}
-        </button>
-
         {!IS_MAC_MODEL_PROVIDER ? (
           <button
             onClick={() => void deleteModel(model.name)}
@@ -81,21 +73,6 @@ export function ModelCard({ model }: ModelCardProps) {
           </button>
         ) : null}
       </div>
-
-      {showInfo ? <ModelInfo model={model} /> : null}
     </div>
   );
-}
-
-function formatSize(bytes: number): string {
-  if (!bytes || bytes <= 0) {
-    return IS_MAC_MODEL_PROVIDER ? 'Local GGUF' : 'Loaded by Provider';
-  }
-
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) {
-    return `${gb.toFixed(1)}GB`;
-  }
-
-  return `${Math.round(bytes / (1024 * 1024))}MB`;
 }

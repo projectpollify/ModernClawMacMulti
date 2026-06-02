@@ -4,6 +4,7 @@ pub mod conversation_repo;
 pub mod database;
 pub mod engine_legacy;
 pub mod llama_cpp;
+pub mod local_tools;
 pub mod memory;
 pub mod message_repo;
 pub mod provider;
