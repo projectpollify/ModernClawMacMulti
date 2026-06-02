@@ -6,7 +6,9 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use reqwest::Client;
-use tauri::State;
+#[cfg(target_os = "macos")]
+use tauri::Manager;
+use tauri::{AppHandle, State};
 #[cfg(target_os = "macos")]
 use tokio::sync::Mutex;
 use tokio::time::sleep;
@@ -99,19 +101,23 @@ pub async fn setup_start_engine() -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn setup_start_engine(state: State<'_, DatabaseState>) -> Result<(), String> {
+pub async fn setup_start_engine(
+    app: AppHandle,
+    state: State<'_, DatabaseState>,
+) -> Result<(), String> {
     let model_path = read_string_setting(&state.db, "directEngineModelPath")?
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| {
             "No GGUF model path is configured yet. Add it in Settings under llama-server Executable / GGUF Model Path, then try Start Engine again.".to_string()
         })?;
-    start_llama_server(&state.db, &model_path)?;
+    start_llama_server(&app, &state.db, &model_path)?;
     wait_for_direct_engine().await
 }
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn setup_switch_direct_engine_model(
+    app: AppHandle,
     state: State<'_, DatabaseState>,
     model_name: String,
 ) -> Result<String, String> {
@@ -146,7 +152,7 @@ pub async fn setup_switch_direct_engine_model(
 
     stop_llama_server();
     sleep(Duration::from_millis(500)).await;
-    start_llama_server(&state.db, &model_path)?;
+    start_llama_server(&app, &state.db, &model_path)?;
     wait_for_direct_engine().await?;
 
     Ok(model_path)
@@ -180,18 +186,31 @@ fn read_usize_setting(db: &Database, key: &str) -> Result<Option<usize>, String>
 }
 
 #[cfg(target_os = "macos")]
-fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String> {
-    let candidates = configured
-        .into_iter()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .chain(
-            [
-                "/opt/homebrew/bin/llama-server".to_string(),
-                "/usr/local/bin/llama-server".to_string(),
-            ]
-            .into_iter(),
+fn resolve_llama_server_path(
+    app: &AppHandle,
+    configured: Option<&str>,
+) -> Result<String, String> {
+    let mut candidates: Vec<String> = Vec::new();
+
+    if let Some(value) = configured {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            candidates.push(trimmed.to_string());
+        }
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(
+            resource_dir
+                .join("llama-cpp")
+                .join("llama-server")
+                .to_string_lossy()
+                .into_owned(),
         );
+    }
+
+    candidates.push("/opt/homebrew/bin/llama-server".to_string());
+    candidates.push("/usr/local/bin/llama-server".to_string());
 
     for candidate in candidates {
         if Path::new(&candidate).exists() {
@@ -206,9 +225,13 @@ fn resolve_llama_server_path(configured: Option<&str>) -> Result<String, String>
 }
 
 #[cfg(target_os = "macos")]
-fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
+fn start_llama_server(
+    app: &AppHandle,
+    db: &Database,
+    model_path: &str,
+) -> Result<(), String> {
     let configured_executable = read_string_setting(db, "directEngineExecutablePath")?;
-    let executable = resolve_llama_server_path(configured_executable.as_deref())?;
+    let executable = resolve_llama_server_path(app, configured_executable.as_deref())?;
     let profile = DirectEngineProfile::from_model_path(model_path);
     let context_window_size = read_usize_setting(db, "contextWindowSize")?
         .unwrap_or(4096)
@@ -275,7 +298,10 @@ fn start_llama_server(db: &Database, model_path: &str) -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-pub async fn ensure_direct_engine_running(db: &Database) -> Result<(), String> {
+pub async fn ensure_direct_engine_running(
+    app: &AppHandle,
+    db: &Database,
+) -> Result<(), String> {
     let start_lock = DIRECT_ENGINE_START_LOCK.get_or_init(|| Mutex::new(()));
     let _guard = start_lock.lock().await;
     let provider = LlamaCppService::new();
@@ -290,7 +316,7 @@ pub async fn ensure_direct_engine_running(db: &Database) -> Result<(), String> {
         return Ok(());
     };
 
-    start_llama_server(db, &model_path)?;
+    start_llama_server(app, db, &model_path)?;
     wait_for_direct_engine().await
 }
 

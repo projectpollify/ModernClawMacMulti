@@ -22,11 +22,12 @@ pub struct AppState {
 
 #[tauri::command]
 pub async fn check_engine_status(
+    #[cfg(target_os = "macos")] app: AppHandle,
     state: State<'_, AppState>,
     #[cfg(target_os = "macos")] db_state: State<'_, DatabaseState>,
 ) -> Result<EngineStatus, String> {
     #[cfg(target_os = "macos")]
-    if let Err(error) = ensure_direct_engine_running(&db_state.db).await {
+    if let Err(error) = ensure_direct_engine_running(&app, &db_state.db).await {
         return Ok(EngineStatus {
             running: false,
             version: Some("llama.cpp".to_string()),
