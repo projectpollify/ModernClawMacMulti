@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use std::path::Path;
 
 use crate::services::database::Database;
@@ -479,13 +479,34 @@ fn is_builtin_profile_id(agent_id: &str) -> bool {
 }
 
 fn parse_rfc3339(value: String) -> rusqlite::Result<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(&value)
-        .map(|value| value.with_timezone(&Utc))
-        .map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(
-                value.len(),
-                rusqlite::types::Type::Text,
-                Box::new(error),
-            )
-        })
+    Ok(parse_timestamp(&value))
+}
+
+/// Tolerantly parse a stored timestamp into UTC.
+///
+/// We write RFC3339, but older rows and some migration paths stored
+/// SQLite-style "YYYY-MM-DD HH:MM:SS" (no `T`, no timezone). A single
+/// unparseable value must NEVER fail the surrounding query: one malformed
+/// `updated_at` once made `agent_list` error out, which left the whole app
+/// stuck on "Loading brains..." with chat and setup gated behind it. Since
+/// these timestamps are only used for display and sorting, we fall back to the
+/// Unix epoch rather than dropping the row.
+fn parse_timestamp(value: &str) -> DateTime<Utc> {
+    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
+        return parsed.with_timezone(&Utc);
+    }
+
+    const NAIVE_FORMATS: &[&str] = &[
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+    ];
+    for format in NAIVE_FORMATS {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(value, format) {
+            return naive.and_utc();
+        }
+    }
+
+    DateTime::<Utc>::from_timestamp(0, 0).unwrap_or_else(Utc::now)
 }

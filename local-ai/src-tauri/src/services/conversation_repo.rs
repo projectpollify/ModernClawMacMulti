@@ -1,6 +1,6 @@
 use crate::services::database::Database;
 use crate::types::Conversation;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 
 pub struct ConversationRepository<'a> {
     db: &'a Database,
@@ -153,13 +153,28 @@ impl<'a> ConversationRepository<'a> {
 }
 
 fn parse_rfc3339(value: String) -> rusqlite::Result<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(&value)
-        .map(|value| value.with_timezone(&Utc))
-        .map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(
-                value.len(),
-                rusqlite::types::Type::Text,
-                Box::new(error),
-            )
-        })
+    Ok(parse_timestamp(&value))
+}
+
+/// Tolerantly parse a stored timestamp into UTC. See `agent_repo::parse_timestamp`
+/// for the full rationale: a single malformed value must never fail the whole
+/// query, so unrecognized formats fall back to the Unix epoch.
+fn parse_timestamp(value: &str) -> DateTime<Utc> {
+    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
+        return parsed.with_timezone(&Utc);
+    }
+
+    const NAIVE_FORMATS: &[&str] = &[
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+    ];
+    for format in NAIVE_FORMATS {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(value, format) {
+            return naive.and_utc();
+        }
+    }
+
+    DateTime::<Utc>::from_timestamp(0, 0).unwrap_or_else(Utc::now)
 }
