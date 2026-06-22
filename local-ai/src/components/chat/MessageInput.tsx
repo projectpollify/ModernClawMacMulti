@@ -2,6 +2,7 @@ import { type ChangeEvent, type DragEvent, type KeyboardEvent, useEffect, useRef
 import { convertAudioBlobToWav } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import type { AudioNoteDraft, DocumentAttachmentDraft } from '@/types';
+import { attachmentApi } from '@/services/attachments';
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useVoiceStore } from '@/stores/voiceStore';
@@ -10,8 +11,10 @@ const MESSAGE_CHARACTER_LIMIT = 2000;
 const MAX_IMAGE_ATTACHMENTS = 4;
 const MAX_AUDIO_ATTACHMENTS = 2;
 const MAX_DOCUMENT_ATTACHMENTS = 4;
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const MAX_DOCUMENT_TEXT_CHARACTERS = 20000;
-const SUPPORTED_DOCUMENT_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'csv', 'json', 'log']);
+const DOCUMENT_ACCEPT = '.txt,.md,.markdown,.csv,.json,.yaml,.yml,.log,.pdf,text/plain,text/markdown,text/csv,application/json,application/yaml,text/yaml,application/pdf';
+const SUPPORTED_DOCUMENT_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'csv', 'json', 'yaml', 'yml', 'log', 'pdf']);
 
 interface PendingImageAttachment {
   id: string;
@@ -246,7 +249,7 @@ export function MessageInput() {
     const documentFiles = files.filter(isSupportedDocumentFile);
 
     if (imageFiles.length + audioFiles.length + documentFiles.length !== files.length) {
-      setAttachmentError('Only images, audio notes, and text-based documents can be attached right now.');
+      setAttachmentError('Only images, audio notes, PDFs, and text-based documents can be attached right now.');
     } else {
       setAttachmentError(null);
     }
@@ -382,6 +385,11 @@ export function MessageInput() {
     }
 
     for (const file of nextFiles) {
+      if (file.size > MAX_DOCUMENT_BYTES) {
+        setAttachmentError(`"${file.name}" is too large. Documents must be 10 MB or smaller.`);
+        continue;
+      }
+
       try {
         const extractedText = await extractDocumentText(file);
         if (!extractedText.trim()) {
@@ -570,7 +578,7 @@ export function MessageInput() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,audio/*,.txt,.md,.markdown,.csv,.json,.log"
+            accept={`image/*,audio/*,${DOCUMENT_ACCEPT}`}
             multiple
             className="hidden"
             onChange={handleSelectAttachments}
@@ -668,12 +676,27 @@ function getPreferredMimeType() {
 }
 
 function isSupportedDocumentFile(file: File) {
+  if (
+    file.type.startsWith('text/') ||
+    file.type === 'application/json' ||
+    file.type === 'application/yaml' ||
+    file.type === 'text/yaml' ||
+    file.type === 'application/pdf'
+  ) {
+    return true;
+  }
+
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
   return SUPPORTED_DOCUMENT_EXTENSIONS.has(extension);
 }
 
 async function extractDocumentText(file: File) {
-  const raw = await file.text();
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const raw = await attachmentApi.extractDocumentText({
+    filename: file.name,
+    mimeType: file.type,
+    bytes,
+  });
   const normalized = raw.replace(/\r\n/g, '\n').trim();
   if (normalized.length <= MAX_DOCUMENT_TEXT_CHARACTERS) {
     return normalized;

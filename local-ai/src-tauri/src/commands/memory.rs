@@ -168,3 +168,16 @@ pub async fn memory_store_chat_attachment(
         &bytes,
     )
 }
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn memory_extract_document_text(
+    db_state: State<'_, DatabaseState>,
+    state: State<'_, MemoryState>,
+    filename: String,
+    mimeType: Option<String>,
+    bytes: Vec<u8>,
+) -> Result<String, String> {
+    let service = state.resolve_service(&db_state.db)?;
+    service.extract_document_text(&filename, mimeType.as_deref(), &bytes)
+}

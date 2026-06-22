@@ -21,4 +21,12 @@ export const attachmentApi = {
       bytes: Array.from(input.bytes),
     });
   },
+
+  async extractDocumentText(input: Omit<StoreAttachmentInput, 'conversationId' | 'kind' | 'extractedText'>): Promise<string> {
+    return invoke<string>('memory_extract_document_text', {
+      filename: input.filename,
+      mimeType: input.mimeType ?? null,
+      bytes: Array.from(input.bytes),
+    });
+  },
 };

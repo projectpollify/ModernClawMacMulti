@@ -2,6 +2,7 @@ use crate::types::{CuratorPackage, DailyLog, MemoryContext, MemoryFile, MessageA
 use chrono::Local;
 use serde::Deserialize;
 use std::fs;
+use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
@@ -259,6 +260,9 @@ impl MemoryService {
             "text/markdown" => "md".to_string(),
             "text/csv" => "csv".to_string(),
             "application/json" => "json".to_string(),
+            "application/yaml" => "yaml".to_string(),
+            "text/yaml" => "yaml".to_string(),
+            "application/pdf" => "pdf".to_string(),
             _ => "bin".to_string(),
         }
     }
@@ -553,6 +557,90 @@ impl MemoryService {
         })
     }
 
+    pub fn extract_document_text(
+        &self,
+        filename: &str,
+        mime_type: Option<&str>,
+        bytes: &[u8],
+    ) -> Result<String, String> {
+        if bytes.is_empty() {
+            return Err("Document is empty".to_string());
+        }
+
+        let extension = Self::attachment_extension(filename, mime_type);
+        match extension.as_str() {
+            "txt" | "md" | "markdown" | "csv" | "json" | "yaml" | "yml" | "log" => {
+                String::from_utf8(bytes.to_vec())
+                    .map(|value| value.trim().to_string())
+                    .map_err(|error| format!("Document is not valid UTF-8 text: {}", error))
+            }
+            "pdf" => self.extract_pdf_text(filename, bytes),
+            _ => Err(format!("Unsupported document type: .{}", extension)),
+        }
+    }
+
+    fn extract_pdf_text(&self, filename: &str, bytes: &[u8]) -> Result<String, String> {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "modernclaw-pdf-{}",
+            Local::now().format("%Y%m%d%H%M%S%3f")
+        ));
+        fs::create_dir_all(&temp_dir)
+            .map_err(|error| format!("Failed to create temporary PDF directory: {}", error))?;
+
+        let extension = Self::attachment_extension(filename, Some("application/pdf"));
+        let temp_pdf = temp_dir.join(format!("input.{}", extension));
+        fs::write(&temp_pdf, bytes)
+            .map_err(|error| format!("Failed to write temporary PDF: {}", error))?;
+
+        let script = r###"
+import sys
+from pypdf import PdfReader
+
+reader = PdfReader(sys.argv[1])
+parts = []
+for index, page in enumerate(reader.pages, start=1):
+    text = page.extract_text() or ""
+    text = text.strip()
+    if text:
+        parts.append(f"## Page {index}\n\n{text}")
+print("\n\n".join(parts))
+"###;
+
+        let script_path = temp_dir.join("extract_pdf.py");
+        {
+            let mut file = fs::File::create(&script_path)
+                .map_err(|error| format!("Failed to create PDF extraction script: {}", error))?;
+            file.write_all(script.as_bytes())
+                .map_err(|error| format!("Failed to write PDF extraction script: {}", error))?;
+        }
+
+        let python = find_python_binary()
+            .ok_or_else(|| "PDF extraction requires python3 with pypdf installed.".to_string())?;
+        let output = Command::new(python)
+            .arg(&script_path)
+            .arg(&temp_pdf)
+            .output()
+            .map_err(|error| format!("Failed to run PDF extraction: {}", error))?;
+
+        let _ = fs::remove_dir_all(&temp_dir);
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(if stderr.is_empty() {
+                "PDF extraction failed.".to_string()
+            } else {
+                format!("PDF extraction failed: {}", stderr)
+            });
+        }
+
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if text.is_empty() {
+            return Err("No readable text was found in this PDF.".to_string());
+        }
+
+        Ok(text)
+    }
+
     pub fn open_base_path(&self) -> Result<(), String> {
         #[cfg(target_os = "windows")]
         let mut command = {
@@ -598,4 +686,19 @@ fn slugify(value: &str) -> String {
     }
 
     slug.trim_matches('-').to_string()
+}
+
+fn find_python_binary() -> Option<&'static str> {
+    for candidate in [
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/usr/bin/python3",
+        "python3",
+    ] {
+        if Command::new(candidate).arg("--version").output().is_ok() {
+            return Some(candidate);
+        }
+    }
+
+    None
 }
