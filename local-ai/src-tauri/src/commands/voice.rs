@@ -29,6 +29,10 @@ fn find_binary_in_path(names: &[&str]) -> Option<PathBuf> {
     None
 }
 
+fn home_dir() -> Option<PathBuf> {
+    env::var_os("HOME").map(PathBuf::from)
+}
+
 fn resolve_piper_path(explicit: Option<String>) -> Option<PathBuf> {
     let configured = resolve_optional_path(explicit);
     if let Some(path) = configured {
@@ -37,7 +41,42 @@ fn resolve_piper_path(explicit: Option<String>) -> Option<PathBuf> {
         }
     }
 
+    if let Some(home) = home_dir() {
+        let candidate = home.join(".local").join("bin").join("piper");
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+
     find_binary_in_path(&["piper.exe", "piper"])
+}
+
+fn resolve_piper_model_path(explicit: Option<String>) -> Option<PathBuf> {
+    let configured = resolve_optional_path(explicit);
+    if let Some(path) = configured {
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+
+    if let Some(home) = home_dir() {
+        let voice_root = home
+            .join("Library")
+            .join("Application Support")
+            .join("LocalAI")
+            .join("tools")
+            .join("piper")
+            .join("voices");
+
+        for filename in ["en_US-amy-medium.onnx", "en_US-joe-medium.onnx"] {
+            let candidate = voice_root.join(filename);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    None
 }
 
 fn resolve_whisper_path(explicit: Option<String>) -> Option<PathBuf> {
@@ -48,12 +87,7 @@ fn resolve_whisper_path(explicit: Option<String>) -> Option<PathBuf> {
         }
     }
 
-    find_binary_in_path(&[
-        "whisper-cli.exe",
-        "whisper.exe",
-        "whisper-cli",
-        "whisper",
-    ])
+    find_binary_in_path(&["whisper-cli.exe", "whisper.exe", "whisper-cli", "whisper"])
 }
 
 fn temp_timestamp() -> Result<u128, String> {
@@ -92,13 +126,10 @@ pub async fn voice_check_status(
     model_path: Option<String>,
 ) -> Result<VoiceStatus, String> {
     let executable_path = resolve_piper_path(piper_path);
-    let model_path = resolve_optional_path(model_path);
+    let model_path = resolve_piper_model_path(model_path);
 
     let piper_found = executable_path.is_some();
-    let model_found = model_path
-        .as_ref()
-        .map(|path| path.is_file())
-        .unwrap_or(false);
+    let model_found = model_path.is_some();
 
     let mut notes = Vec::new();
 
@@ -176,11 +207,9 @@ pub async fn voice_speak(
         "Piper executable was not found. Configure it in Settings first.".to_string()
     })?;
 
-    let model = resolve_optional_path(model_path)
-        .filter(|path| path.is_file())
-        .ok_or_else(|| {
-            "Piper voice model was not found. Configure it in Settings first.".to_string()
-        })?;
+    let model = resolve_piper_model_path(model_path).ok_or_else(|| {
+        "Piper voice model was not found. Configure it in Settings first.".to_string()
+    })?;
 
     let temp_root = env::temp_dir().join("modernclaw-voice");
     fs::create_dir_all(&temp_root)

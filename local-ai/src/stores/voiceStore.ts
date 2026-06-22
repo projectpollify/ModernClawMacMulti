@@ -6,23 +6,54 @@ import { useAgentStore } from '@/stores/agentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import type { VoiceInputStatus, VoiceOutputStatus } from '@/types/voice';
 
-let activeAudio: HTMLAudioElement | null = null;
-let activeAudioUrl: string | null = null;
+interface VoicePlayback {
+  context: AudioContext;
+  buffer: AudioBuffer;
+  source: AudioBufferSourceNode | null;
+  startedAt: number;
+  offset: number;
+  token: number;
+}
+
+let activePlayback: VoicePlayback | null = null;
 let playbackToken = 0;
 
 function releaseAudio() {
-  if (activeAudio) {
-    activeAudio.onended = null;
-    activeAudio.onerror = null;
-    activeAudio.pause();
-    activeAudio.src = '';
-    activeAudio = null;
+  if (activePlayback) {
+    try {
+      activePlayback.source?.stop();
+    } catch {
+      // The source may already have ended; cleanup should still continue.
+    }
+    activePlayback.source = null;
+    void activePlayback.context.close();
+    activePlayback = null;
   }
+}
 
-  if (activeAudioUrl) {
-    URL.revokeObjectURL(activeAudioUrl);
-    activeAudioUrl = null;
-  }
+function createAudioContext() {
+  return new AudioContext();
+}
+
+function toArrayBuffer(bytes: Uint8Array) {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
+}
+
+function startPlaybackSource(
+  playback: VoicePlayback,
+  onEnded: () => void,
+  offset = playback.offset
+) {
+  const source = playback.context.createBufferSource();
+  source.buffer = playback.buffer;
+  source.connect(playback.context.destination);
+  source.onended = onEnded;
+  playback.source = source;
+  playback.startedAt = playback.context.currentTime - offset;
+  playback.offset = offset;
+  source.start(0, offset);
 }
 
 interface VoiceState {
@@ -149,16 +180,20 @@ export const useVoiceStore = create<VoiceState>()((set, get) => ({
         return;
       }
 
-      const audioBuffer = new Uint8Array(audioBytes.length);
-      audioBuffer.set(audioBytes);
-      const blob = new Blob([audioBuffer.buffer], { type: 'audio/wav' });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const audioContext = createAudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(toArrayBuffer(audioBytes));
+      const playback: VoicePlayback = {
+        context: audioContext,
+        buffer: audioBuffer,
+        source: null,
+        startedAt: 0,
+        offset: 0,
+        token: currentToken,
+      };
 
-      activeAudio = audio;
-      activeAudioUrl = url;
+      activePlayback = playback;
 
-      audio.onended = () => {
+      startPlaybackSource(playback, () => {
         if (currentToken !== playbackToken) {
           return;
         }
@@ -168,22 +203,7 @@ export const useVoiceStore = create<VoiceState>()((set, get) => ({
           isPaused: false,
           speakingMessageId: null,
         });
-      };
-
-      audio.onerror = () => {
-        if (currentToken !== playbackToken) {
-          return;
-        }
-        releaseAudio();
-        set({
-          isSpeaking: false,
-          isPaused: false,
-          speakingMessageId: null,
-          error: 'Voice playback failed in the app audio layer.',
-        });
-      };
-
-      await audio.play();
+      });
     } catch (error) {
       if (currentToken === playbackToken) {
         releaseAudio();
@@ -198,11 +218,17 @@ export const useVoiceStore = create<VoiceState>()((set, get) => ({
   },
 
   pauseSpeaking: () => {
-    if (!activeAudio) {
+    if (!activePlayback?.source) {
       return;
     }
 
-    activeAudio.pause();
+    activePlayback.offset = Math.min(
+      activePlayback.buffer.duration,
+      activePlayback.context.currentTime - activePlayback.startedAt
+    );
+    activePlayback.source.onended = null;
+    activePlayback.source.stop();
+    activePlayback.source = null;
     set({
       isSpeaking: true,
       isPaused: true,
@@ -210,12 +236,24 @@ export const useVoiceStore = create<VoiceState>()((set, get) => ({
   },
 
   resumeSpeaking: async () => {
-    if (!activeAudio) {
+    if (!activePlayback || activePlayback.offset >= activePlayback.buffer.duration) {
       return;
     }
 
     try {
-      await activeAudio.play();
+      const playback = activePlayback;
+      await playback.context.resume();
+      startPlaybackSource(playback, () => {
+        if (playback.token !== playbackToken) {
+          return;
+        }
+        releaseAudio();
+        set({
+          isSpeaking: false,
+          isPaused: false,
+          speakingMessageId: null,
+        });
+      });
       set({
         isSpeaking: true,
         isPaused: false,

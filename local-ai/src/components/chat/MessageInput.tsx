@@ -150,6 +150,11 @@ export function MessageInput() {
       return;
     }
 
+    if (typeof MediaRecorder === 'undefined') {
+      setError('This app WebView does not support microphone recording through MediaRecorder.');
+      return;
+    }
+
     setIsPreparingMic(true);
     setError(null);
 
@@ -182,7 +187,7 @@ export function MessageInput() {
       recorder.start();
       setIsRecording(true);
     } catch (error) {
-      setError(`Unable to access the microphone. (${String(error)})`);
+      setError(`Unable to access the microphone. (${formatVoiceError(error)})`);
       stopStream();
     } finally {
       setIsPreparingMic(false);
@@ -220,7 +225,7 @@ export function MessageInput() {
       setAttachmentError(null);
       requestAnimationFrame(() => textareaRef.current?.focus());
     } catch (error) {
-      setError(`Voice transcription failed. (${String(error)})`);
+      setError(`Voice transcription failed. (${formatVoiceError(error)})`);
     }
   };
 
@@ -671,8 +676,42 @@ export function MessageInput() {
 }
 
 function getPreferredMimeType() {
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+  if (typeof MediaRecorder === 'undefined') {
+    return undefined;
+  }
+
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/wav',
+  ];
   return candidates.find((value) => MediaRecorder.isTypeSupported(value));
+}
+
+function formatVoiceError(error: unknown) {
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError') {
+      return 'Microphone permission was denied. Open System Settings > Privacy & Security > Microphone and allow ModernClawMac.';
+    }
+
+    if (error.name === 'NotFoundError') {
+      return 'No microphone input device was found by macOS.';
+    }
+
+    if (error.name === 'NotReadableError') {
+      return 'macOS could not read from the microphone. Another app may be using it, or permission needs to be reset.';
+    }
+
+    return `${error.name}${error.message ? `: ${error.message}` : ''}`;
+  }
+
+  if (error instanceof Error) {
+    return `${error.name}${error.message ? `: ${error.message}` : ''}`;
+  }
+
+  return String(error);
 }
 
 function isSupportedDocumentFile(file: File) {

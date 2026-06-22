@@ -9,6 +9,9 @@ export async function convertAudioBlobToWav(blob: Blob): Promise<Uint8Array> {
     const mono = mixToMono(audioBuffer);
     const resampled = resampleLinear(mono, audioBuffer.sampleRate, TARGET_SAMPLE_RATE);
     return encodeWav(resampled, TARGET_SAMPLE_RATE);
+  } catch (error) {
+    const detail = error instanceof Error && error.message ? ` ${error.message}` : '';
+    throw new Error(`Recorded audio could not be decoded by the app.${detail}`);
   } finally {
     await audioContext.close();
   }
