@@ -3,12 +3,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::process::Command;
 
 use crate::services::database::Database;
 use crate::services::memory::MemoryService;
 
 const MAX_SEARCH_RESULTS: usize = 10;
 const MAX_FILE_BYTES: u64 = 512 * 1024;
+const PDF_EXPORT_SCRIPT: &str = "/Users/shawn/.codex/skills/document-exporter/scripts/md_to_pdf.py";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalToolCall {
@@ -35,7 +37,7 @@ impl<'a> LocalToolService<'a> {
     }
 
     pub fn tool_instructions() -> &'static str {
-        r#"ModernClaw has a local-only tool layer. Use it only when it helps the user's request.
+        r##"ModernClaw has a local-only tool layer. Use it only when it helps the user's request.
 
 Available tools:
 - memory.write_note: Save a durable note to today's local memory log. Arguments: {"note":"..."}
@@ -44,11 +46,15 @@ Available tools:
 - knowledge.search: Search local knowledge files. Arguments: {"query":"...","limit":5}
 - app.get_settings: Inspect saved ModernClaw settings. Arguments: {}
 - workspace.list_safe_files: List safe local workspace files under memory and knowledge. Arguments: {"path":"optional-relative-folder","limit":20}
+- workspace.write_markdown: Save a Markdown file inside the active workspace. Arguments: {"path":"summaries/example.md","content":"# Title\n\n...","overwrite":false}
+- workspace.export_pdf: Export an existing workspace Markdown file to PDF. Arguments: {"sourcePath":"summaries/example.md","outputPath":"summaries/example.pdf"}
+
+When the user asks for a Markdown file, call workspace.write_markdown. When the user asks for a PDF, write the Markdown source first, then call workspace.export_pdf. Only report a file was saved after a successful tool result.
 
 To call a tool, respond with only this JSON, with no prose:
 {"modernclaw_tool_call":{"name":"tool.name","arguments":{}}}
 
-After ModernClaw returns a tool result, answer the user normally. Never claim a tool ran unless ModernClaw provides a tool result."#
+After ModernClaw returns a tool result, answer the user normally. Never claim a tool ran unless ModernClaw provides a tool result."##
     }
 
     pub fn execute(&self, call: LocalToolCall) -> LocalToolResult {
@@ -60,6 +66,8 @@ After ModernClaw returns a tool result, answer the user normally. Never claim a 
             "knowledge.search" => self.knowledge_search(&call.arguments),
             "app.get_settings" => self.app_get_settings(),
             "workspace.list_safe_files" => self.workspace_list_safe_files(&call.arguments),
+            "workspace.write_markdown" => self.workspace_write_markdown(&call.arguments),
+            "workspace.export_pdf" => self.workspace_export_pdf(&call.arguments),
             _ => Err(format!("Unknown local tool: {}", name)),
         };
 
@@ -204,6 +212,105 @@ After ModernClaw returns a tool result, answer the user normally. Never claim a 
             "files": files,
         }))
     }
+
+    fn workspace_write_markdown(&self, arguments: &Value) -> Result<Value, String> {
+        let relative_path = required_string(arguments, "path")?;
+        let content = required_string(arguments, "content")?;
+        let overwrite = optional_bool(arguments, "overwrite").unwrap_or(false);
+        let base_path = PathBuf::from(self.memory_service.get_base_path());
+        let target = resolve_safe_output_path(&base_path, &relative_path, "md")?;
+        let target = if overwrite {
+            target
+        } else {
+            unique_output_path(target)
+        };
+
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("Failed to create output directory: {}", error))?;
+        }
+
+        let mut markdown = content.trim().to_string();
+        markdown.push('\n');
+        fs::write(&target, markdown)
+            .map_err(|error| format!("Failed to write Markdown file: {}", error))?;
+
+        Ok(json!({
+            "saved": true,
+            "kind": "markdown",
+            "path": relative_to_workspace(&base_path, &target),
+            "absolutePath": target.to_string_lossy().to_string(),
+            "sizeBytes": fs::metadata(&target).ok().map(|metadata| metadata.len()),
+        }))
+    }
+
+    fn workspace_export_pdf(&self, arguments: &Value) -> Result<Value, String> {
+        let source_path = required_string(arguments, "sourcePath")?;
+        let output_path = optional_string(arguments, "outputPath")
+            .unwrap_or_else(|| source_path_with_extension(&source_path, "pdf"));
+        let overwrite = optional_bool(arguments, "overwrite").unwrap_or(false);
+        let base_path = PathBuf::from(self.memory_service.get_base_path());
+        let source = resolve_safe_output_path(&base_path, &source_path, "md")?;
+
+        if !source.exists() {
+            return Err(format!("Markdown source does not exist: {}", source_path));
+        }
+
+        let output = resolve_safe_output_path(&base_path, &output_path, "pdf")?;
+        let output = if overwrite {
+            output
+        } else {
+            unique_output_path(output)
+        };
+
+        if let Some(parent) = output.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("Failed to create PDF output directory: {}", error))?;
+        }
+
+        let python =
+            find_python_binary().ok_or_else(|| "PDF export requires python3.".to_string())?;
+        let script = Path::new(PDF_EXPORT_SCRIPT);
+        if !script.exists() {
+            return Err(format!(
+                "PDF export script not found: {}",
+                PDF_EXPORT_SCRIPT
+            ));
+        }
+
+        let output_result = Command::new(python)
+            .arg(script)
+            .arg(&source)
+            .arg(&output)
+            .output()
+            .map_err(|error| format!("Failed to run PDF export: {}", error))?;
+
+        if !output_result.status.success() {
+            let stderr = String::from_utf8_lossy(&output_result.stderr)
+                .trim()
+                .to_string();
+            return Err(if stderr.is_empty() {
+                "PDF export failed.".to_string()
+            } else {
+                format!("PDF export failed: {}", stderr)
+            });
+        }
+
+        let metadata = fs::metadata(&output)
+            .map_err(|error| format!("PDF export did not create an output file: {}", error))?;
+        if metadata.len() == 0 {
+            return Err("PDF export created an empty file.".to_string());
+        }
+
+        Ok(json!({
+            "saved": true,
+            "kind": "pdf",
+            "sourcePath": relative_to_workspace(&base_path, &source),
+            "path": relative_to_workspace(&base_path, &output),
+            "absolutePath": output.to_string_lossy().to_string(),
+            "sizeBytes": metadata.len(),
+        }))
+    }
 }
 
 pub fn parse_local_tool_call(content: &str) -> Option<LocalToolCall> {
@@ -276,6 +383,10 @@ fn optional_string_array(arguments: &Value, key: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn optional_bool(arguments: &Value, key: &str) -> Option<bool> {
+    arguments.get(key).and_then(Value::as_bool)
 }
 
 fn optional_limit(arguments: &Value, key: &str, default_value: usize, max_value: usize) -> usize {
@@ -469,6 +580,98 @@ fn resolve_safe_workspace_path(base_path: &Path, relative_path: &str) -> Result<
     Ok(base_path.join(relative))
 }
 
+fn resolve_safe_output_path(
+    base_path: &Path,
+    relative_path: &str,
+    required_extension: &str,
+) -> Result<PathBuf, String> {
+    let relative_path = relative_path.trim();
+    if relative_path.is_empty() {
+        return Err("Output path is required".to_string());
+    }
+
+    let relative = Path::new(relative_path);
+    if relative.is_absolute() {
+        return Err("Absolute paths are not allowed".to_string());
+    }
+
+    let mut has_component = false;
+    for component in relative.components() {
+        match component {
+            Component::Normal(_) => has_component = true,
+            _ => return Err("Unsafe path component is not allowed".to_string()),
+        }
+    }
+
+    if !has_component {
+        return Err("Output path is required".to_string());
+    }
+
+    let extension = relative
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .ok_or_else(|| format!("Output path must end in .{}", required_extension))?;
+    if extension != required_extension {
+        return Err(format!("Output path must end in .{}", required_extension));
+    }
+
+    Ok(base_path.join(relative))
+}
+
+fn unique_output_path(path: PathBuf) -> PathBuf {
+    if !path.exists() {
+        return path;
+    }
+
+    let parent = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("document");
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
+
+    for index in 2..1000 {
+        let candidate = parent.join(format!("{}-{}.{}", stem, index, extension));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    parent.join(format!("{}-{}.{}", stem, Utc::now().timestamp(), extension))
+}
+
+fn source_path_with_extension(source_path: &str, extension: &str) -> String {
+    let mut path = PathBuf::from(source_path);
+    path.set_extension(extension);
+    path.to_string_lossy().to_string()
+}
+
+fn relative_to_workspace(base_path: &Path, path: &Path) -> String {
+    path.strip_prefix(base_path)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string()
+}
+
+fn find_python_binary() -> Option<&'static str> {
+    for candidate in [
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/usr/bin/python3",
+        "python3",
+    ] {
+        if Command::new(candidate).arg("--version").output().is_ok() {
+            return Some(candidate);
+        }
+    }
+
+    None
+}
+
 fn truncate(value: &str, max_chars: usize) -> String {
     let mut output: String = value.chars().take(max_chars).collect();
     if value.chars().count() > max_chars {
@@ -536,7 +739,10 @@ mod tests {
             arguments: json!({ "query": "beginner safety", "limit": 5 }),
         });
         assert!(memory_result.success);
-        assert!(!memory_result.content["results"].as_array().unwrap().is_empty());
+        assert!(!memory_result.content["results"]
+            .as_array()
+            .unwrap()
+            .is_empty());
 
         let lesson_result = tools.execute(LocalToolCall {
             name: "knowledge.save_lesson".to_string(),
@@ -553,7 +759,10 @@ mod tests {
             arguments: json!({ "query": "prompts lessons machine", "limit": 5 }),
         });
         assert!(knowledge_result.success);
-        assert!(!knowledge_result.content["results"].as_array().unwrap().is_empty());
+        assert!(!knowledge_result.content["results"]
+            .as_array()
+            .unwrap()
+            .is_empty());
 
         let settings_result = tools.execute(LocalToolCall {
             name: "app.get_settings".to_string(),
@@ -571,6 +780,16 @@ mod tests {
         });
         assert!(files_result.success);
         assert!(!files_result.content["files"].as_array().unwrap().is_empty());
+
+        let markdown_result = tools.execute(LocalToolCall {
+            name: "workspace.write_markdown".to_string(),
+            arguments: json!({
+                "path": "summaries/tool-summary.md",
+                "content": "# Tool Summary\n\nModernClaw can save Markdown files.",
+            }),
+        });
+        assert!(markdown_result.success);
+        assert!(root.join("summaries/tool-summary.md").exists());
 
         let _ = fs::remove_dir_all(root);
         let _ = fs::remove_dir_all(db_path.parent().unwrap());
